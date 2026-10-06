@@ -8,7 +8,7 @@ const statusValidator = v.union(
   v.literal("archived"),
 );
 
-/** Every festival, soonest first, with its event + seat rollup. */
+/** Every programme, soonest first, with its event and booking rollup. */
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -34,7 +34,7 @@ export const list = query({
   },
 });
 
-/** A single festival plus its full event list. */
+/** A single programme plus its full event list. */
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, { slug }) => {
@@ -66,7 +66,7 @@ export const getBySlug = query({
   },
 });
 
-/** Festivals this account runs — the organizer's own shelf. */
+/** Programmes this account runs — the business's own shelf. */
 export const mine = query({
   args: {},
   handler: async (ctx) => {
@@ -141,9 +141,9 @@ export const update = mutation({
   handler: async (ctx, { id, ...patch }) => {
     const userId = await requireUserId(ctx);
     const fest = await ctx.db.get(id);
-    if (fest === null) throw new Error("That festival no longer exists.");
+    if (fest === null) throw new Error("That programme no longer exists.");
     if (fest.ownerId !== userId) {
-      throw new Error("Only the organizing account can edit this festival.");
+      throw new Error("Only the owning account can edit this programme.");
     }
     await ctx.db.patch(id, {
       ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
@@ -167,7 +167,7 @@ export const update = mutation({
   },
 });
 
-/** Delete a festival together with its events and their registrations. */
+/** Delete a programme together with its events, bookings and discussion. */
 export const remove = mutation({
   args: { id: v.id("fests") },
   handler: async (ctx, { id }) => {
@@ -175,19 +175,26 @@ export const remove = mutation({
     const fest = await ctx.db.get(id);
     if (fest === null) return { removed: false };
     if (fest.ownerId !== userId) {
-      throw new Error("Only the organizing account can delete this festival.");
+      throw new Error("Only the owning account can delete this programme.");
     }
     const events = await ctx.db
       .query("events")
       .withIndex("by_fest", (q) => q.eq("festId", id))
       .collect();
     for (const event of events) {
-      const registrations = await ctx.db
+      const bookings = await ctx.db
         .query("registrations")
         .withIndex("by_event", (q) => q.eq("eventId", event._id))
         .collect();
-      for (const registration of registrations) {
-        await ctx.db.delete(registration._id);
+      for (const booking of bookings) {
+        await ctx.db.delete(booking._id);
+      }
+      const comments = await ctx.db
+        .query("comments")
+        .withIndex("by_event", (q) => q.eq("eventId", event._id))
+        .collect();
+      for (const comment of comments) {
+        await ctx.db.delete(comment._id);
       }
       await ctx.db.delete(event._id);
     }

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { publicEvent, requireUserId, uniqueSlug } from "./model";
+import { publicBooking, publicEvent, requireUserId, uniqueSlug } from "./model";
 
 const formatValidator = v.union(
   v.literal("in-person"),
@@ -9,9 +9,9 @@ const formatValidator = v.union(
 );
 
 /**
- * The whole event catalogue in one reactive read, each row carrying its
- * festival. The dataset for version 1 is small, so the directory filters
- * client-side for instant keystroke feedback instead of round-tripping.
+ * The whole catalogue in one reactive read, each row carrying its programme.
+ * The catalogue for this release is small, so the directory filters
+ * client-side and results appear on the keystroke.
  */
 export const list = query({
   args: {},
@@ -35,7 +35,7 @@ export const list = query({
   },
 });
 
-/** A single event, its festival, and the viewer's own registration if any. */
+/** A single event, its programme, and the viewer's own booking if there is one. */
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, { slug }) => {
@@ -49,7 +49,7 @@ export const getBySlug = query({
     const fest = await ctx.db.get(event.festId);
     const userId = await requireUserId(ctx).catch(() => null);
 
-    const registration =
+    const booking =
       userId === null
         ? null
         : ((await ctx.db
@@ -64,24 +64,29 @@ export const getBySlug = query({
       .withIndex("by_fest", (q) => q.eq("festId", event.festId))
       .collect();
 
+    const commentCount = (
+      await ctx.db
+        .query("comments")
+        .withIndex("by_event", (q) => q.eq("eventId", event._id))
+        .collect()
+    ).length;
+
     return {
       event: publicEvent(event, now),
-      fest: fest === null ? null : { name: fest.name, slug: fest.slug, organization: fest.organization },
+      fest:
+        fest === null
+          ? null
+          : {
+              name: fest.name,
+              slug: fest.slug,
+              organization: fest.organization,
+            },
       viewer: {
         signedIn: userId !== null,
-        registration:
-          registration === null
-            ? null
-            : {
-                _id: registration._id,
-                status: registration.status,
-                reference: registration.reference,
-                fullName: registration.fullName,
-                email: registration.email,
-                createdAt: registration.createdAt,
-              },
+        booking: booking === null ? null : publicBooking(booking),
       },
-      alsoInFest: siblings
+      commentCount,
+      alsoInProgramme: siblings
         .filter((sibling) => sibling._id !== event._id)
         .sort((a, b) => a.startTime - b.startTime)
         .map((sibling) => publicEvent(sibling, now))
@@ -90,7 +95,11 @@ export const getBySlug = query({
   },
 });
 
-/** Events across every festival this account owns, with attendance counts. */
+/**
+ * Events across every programme this business runs, with booking and payment
+ * totals for the admin console. Each row is one line of the revenue picture:
+ * what was taken, and what is still expected.
+ */
 export const organized = query({
   args: {},
   handler: async (ctx) => {
@@ -111,23 +120,23 @@ export const organized = query({
           .collect();
         return Promise.all(
           events.map(async (event) => {
-            const registrations = await ctx.db
+            const bookings = await ctx.db
               .query("registrations")
               .withIndex("by_event", (q) => q.eq("eventId", event._id))
               .collect();
-            const confirmed = registrations.filter(
-              (r) => r.status === "confirmed",
-            ).length;
-            const waitlisted = registrations.filter(
-              (r) => r.status === "waitlisted",
-            ).length;
+            const live = bookings.filter((row) => row.status !== "cancelled");
             return {
               ...publicEvent(event, now),
               festName: fest.name,
               festSlug: fest.slug,
-              confirmed,
-              waitlisted,
-              cancelled: registrations.length - confirmed - waitlisted,
+              confirmed: live.filter((row) => row.status === "confirmed").length,
+              waitlisted: live.filter((row) => row.status === "waitlisted")
+                .length,
+              cancelled: bookings.length - live.length,
+              collected: live.reduce((sum, row) => sum + row.amountPaid, 0),
+              outstanding: live
+                .filter((row) => row.paymentStatus === "due")
+                .reduce((sum, row) => sum + event.price, 0),
             };
           }),
         );
@@ -151,15 +160,15 @@ export const create = mutation({
     venue: v.string(),
     host: v.optional(v.string()),
     capacity: v.number(),
-    fee: v.optional(v.string()),
+    price: v.optional(v.number()),
     registrationClosesAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const fest = await ctx.db.get(args.festId);
-    if (fest === null) throw new Error("That festival no longer exists.");
+    if (fest === null) throw new Error("That programme no longer exists.");
     if (fest.ownerId !== userId) {
-      throw new Error("Only the organizing account can add events here.");
+      throw new Error("Only the owning account can add events here.");
     }
     if (args.endTime < args.startTime) {
       throw new Error("The end time has to come after the start time.");
@@ -179,7 +188,7 @@ export const create = mutation({
       host: args.host?.trim() || undefined,
       capacity: Math.max(1, Math.round(args.capacity)),
       seatsTaken: 0,
-      fee: args.fee?.trim() || undefined,
+      price: Math.max(0, Math.round(args.price ?? 0)),
       registrationClosesAt: args.registrationClosesAt,
       createdAt: Date.now(),
     });
@@ -200,7 +209,7 @@ export const update = mutation({
     venue: v.optional(v.string()),
     host: v.optional(v.string()),
     capacity: v.optional(v.number()),
-    fee: v.optional(v.string()),
+    price: v.optional(v.number()),
     registrationClosesAt: v.optional(v.number()),
   },
   handler: async (ctx, { id, ...patch }) => {
@@ -209,7 +218,7 @@ export const update = mutation({
     if (event === null) throw new Error("That event no longer exists.");
     const fest = await ctx.db.get(event.festId);
     if (fest === null || fest.ownerId !== userId) {
-      throw new Error("Only the organizing account can edit this event.");
+      throw new Error("Only the owning account can edit this event.");
     }
     await ctx.db.patch(id, {
       ...(patch.title !== undefined ? { title: patch.title.trim() } : {}),
@@ -226,11 +235,15 @@ export const update = mutation({
       ...(patch.startTime !== undefined ? { startTime: patch.startTime } : {}),
       ...(patch.endTime !== undefined ? { endTime: patch.endTime } : {}),
       ...(patch.venue !== undefined ? { venue: patch.venue.trim() } : {}),
-      ...(patch.host !== undefined ? { host: patch.host.trim() || undefined } : {}),
+      ...(patch.host !== undefined
+        ? { host: patch.host.trim() || undefined }
+        : {}),
       ...(patch.capacity !== undefined
         ? { capacity: Math.max(1, Math.round(patch.capacity)) }
         : {}),
-      ...(patch.fee !== undefined ? { fee: patch.fee.trim() || undefined } : {}),
+      ...(patch.price !== undefined
+        ? { price: Math.max(0, Math.round(patch.price)) }
+        : {}),
       ...(patch.registrationClosesAt !== undefined
         ? { registrationClosesAt: patch.registrationClosesAt }
         : {}),
@@ -239,7 +252,7 @@ export const update = mutation({
   },
 });
 
-/** Remove an event and every registration attached to it. */
+/** Remove an event, its bookings and its discussion. */
 export const remove = mutation({
   args: { id: v.id("events") },
   handler: async (ctx, { id }) => {
@@ -248,15 +261,18 @@ export const remove = mutation({
     if (event === null) return { removed: false };
     const fest = await ctx.db.get(event.festId);
     if (fest === null || fest.ownerId !== userId) {
-      throw new Error("Only the organizing account can delete this event.");
+      throw new Error("Only the owning account can delete this event.");
     }
-    const registrations = await ctx.db
+    const bookings = await ctx.db
       .query("registrations")
       .withIndex("by_event", (q) => q.eq("eventId", id))
       .collect();
-    for (const registration of registrations) {
-      await ctx.db.delete(registration._id);
-    }
+    for (const booking of bookings) await ctx.db.delete(booking._id);
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_event", (q) => q.eq("eventId", id))
+      .collect();
+    for (const comment of comments) await ctx.db.delete(comment._id);
     await ctx.db.delete(id);
     return { removed: true };
   },

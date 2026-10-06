@@ -3,6 +3,7 @@ import {
   dayParts,
   formatTimeRange,
   groupByDay,
+  priceLabel,
   relativeDay,
   seatSummary,
   seatTone,
@@ -30,15 +31,14 @@ export function StatusDot({
 
 export function EventRow({
   event,
-  festName,
-  showFest = true,
+  showProgramme = true,
 }: {
   event: EventListItem | EventView;
-  festName?: string;
-  showFest?: boolean;
+  showProgramme?: boolean;
 }) {
   const parts = dayParts(event.startTime);
-  const fest = festName ?? ("festName" in event ? event.festName : undefined);
+  const programme =
+    "festName" in event ? (event as EventListItem).festName : undefined;
 
   return (
     <Link
@@ -72,10 +72,10 @@ export function EventRow({
           </span>
           <span className="px-1.5 text-border">·</span>
           {event.venue}
-          {showFest && fest !== undefined && (
+          {showProgramme && programme !== undefined && (
             <>
               <span className="px-1.5 text-border">·</span>
-              {fest}
+              {programme}
             </>
           )}
         </p>
@@ -89,7 +89,9 @@ export function EventRow({
               {seatSummary(event)}
             </span>
           </div>
-          <div className="mt-1 text-[11px] tracking-[0.08em] text-muted-foreground/70 uppercase">
+          <div className="mt-1 text-[11px] tracking-[0.06em] text-muted-foreground/70 tabular-nums uppercase">
+            {priceLabel(event.price)}
+            <span className="px-1.5">·</span>
             {relativeDay(event.startTime)}
           </div>
         </div>
@@ -102,18 +104,18 @@ export function EventRow({
 /** Chronological list with quiet day headings. */
 export function EventList({
   items,
-  showFest = true,
+  showProgramme = true,
   grouped = true,
 }: {
   items: (EventListItem | EventView)[];
-  showFest?: boolean;
+  showProgramme?: boolean;
   grouped?: boolean;
 }) {
   if (!grouped) {
     return (
       <div className="border-t border-border">
         {items.map((event) => (
-          <EventRow key={event._id} event={event} showFest={showFest} />
+          <EventRow key={event._id} event={event} showProgramme={showProgramme} />
         ))}
       </div>
     );
@@ -134,7 +136,11 @@ export function EventList({
           </div>
           <div className="mt-4 border-t border-border">
             {group.items.map((event) => (
-              <EventRow key={event._id} event={event} showFest={showFest} />
+              <EventRow
+                key={event._id}
+                event={event}
+                showProgramme={showProgramme}
+              />
             ))}
           </div>
         </section>

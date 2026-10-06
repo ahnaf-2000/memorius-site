@@ -2,8 +2,8 @@ import { cn } from "@/lib/utils";
 import { Link } from "react-router";
 
 /**
- * Cadence mark: three rules of falling length, like a schedule settling into
- * place. Drawn with currentColor so it stays monochrome in every context.
+ * The Memorius mark: three rules of falling length, like a register settling
+ * line by line. Drawn with currentColor so it stays monochrome everywhere.
  */
 export function BrandMark({ className }: { className?: string }) {
   return (
@@ -64,7 +64,7 @@ export function Brand({
       <BrandMark />
       {showWord && (
         <span className="text-[15px] font-medium tracking-[-0.015em]">
-          Cadence
+          Memorius
         </span>
       )}
     </Link>

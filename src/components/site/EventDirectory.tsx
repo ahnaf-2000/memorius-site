@@ -11,22 +11,22 @@ import { Link } from "react-router";
 const ALL = "All";
 
 /**
- * The main screen's centrepiece: every event, filtered on keystroke.
+ * The catalogue: every event, filtered on keystroke.
  *
- * Search is client-side because the catalogue is small and a busy attendee
- * should never wait on a round-trip to see a result appear. `⌘K` / `Ctrl-K`
- * jumps straight into the field from anywhere on the page.
+ * Search runs on the client because the catalogue is small and a customer
+ * should never wait on a round-trip to see a result appear. `/` jumps into the
+ * field; ⌘K belongs to the global search in the header.
  */
 export function EventDirectory({
   items,
   limit,
-  showFest = true,
+  showProgramme = true,
   moreHref,
   emptyNote,
 }: {
   items: EventListItem[] | undefined;
   limit?: number;
-  showFest?: boolean;
+  showProgramme?: boolean;
   moreHref?: string;
   emptyNote?: string;
 }) {
@@ -43,12 +43,6 @@ export function EventDirectory({
         (target.tagName === "INPUT" ||
           target.tagName === "TEXTAREA" ||
           target.isContentEditable);
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        inputRef.current?.focus();
-        inputRef.current?.select();
-        return;
-      }
       if (event.key === "/" && !typing) {
         event.preventDefault();
         inputRef.current?.focus();
@@ -85,7 +79,7 @@ export function EventDirectory({
   }, [items, query, category, includePast]);
 
   const visible = limit === undefined ? filtered : filtered.slice(0, limit);
-  const festCount = new Set(filtered.map((event) => event.festId)).size;
+  const programmeCount = new Set(filtered.map((event) => event.festId)).size;
   const filteredOut = limit !== undefined && filtered.length > visible.length;
   const isFiltering = query.trim() !== "" || category !== ALL || includePast;
 
@@ -103,9 +97,9 @@ export function EventDirectory({
           ref={inputRef}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search events, festivals or venues"
-          aria-label="Search events"
-          className="h-12 rounded-lg border-border bg-card pr-24 pl-11 text-[14px] shadow-none focus-visible:border-foreground/25 focus-visible:ring-0"
+          placeholder="Search events, programmes or venues"
+          aria-label="Search the catalogue"
+          className="h-12 rounded-lg border-border bg-card pr-20 pl-11 text-[14px] shadow-none focus-visible:border-foreground/25 focus-visible:ring-0"
         />
         <div className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-1">
           {query !== "" ? (
@@ -118,8 +112,8 @@ export function EventDirectory({
               <X className="size-3.5" />
             </button>
           ) : (
-            <span className="hidden items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] tracking-[0.08em] text-muted-foreground sm:flex">
-              ⌘K
+            <span className="hidden items-center rounded border border-border px-1.5 py-0.5 text-[10px] tracking-[0.08em] text-muted-foreground sm:flex">
+              /
             </span>
           )}
         </div>
@@ -151,15 +145,18 @@ export function EventDirectory({
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          {includePast ? "Showing finished" : "Show finished events"}
+          {includePast ? "Showing past events" : "Include past events"}
         </button>
       </div>
 
       <div className="mt-7 flex items-baseline justify-between border-b border-border pb-3">
         <p className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">
           {items === undefined
-            ? "Loading the calendar"
-            : `${pluralize(filtered.length, "event")} · ${pluralize(festCount, "festival")}`}
+            ? "Loading the catalogue"
+            : `${pluralize(filtered.length, "event")} · ${pluralize(
+                programmeCount,
+                "programme",
+              )}`}
         </p>
         {isFiltering && items !== undefined && (
           <button
@@ -177,11 +174,11 @@ export function EventDirectory({
       ) : visible.length === 0 ? (
         <div className="py-20 text-center">
           <p className="text-[15px] font-medium tracking-[-0.012em]">
-            Nothing on the calendar matches that
+            Nothing in the catalogue matches that
           </p>
           <p className="mx-auto mt-2 max-w-sm text-[13px] leading-6 text-muted-foreground">
             {emptyNote ??
-              "Try a different festival, venue or category — or reset the filters to see everything."}
+              "Try another programme, venue or category — or reset the filters to see everything."}
           </p>
           <Button
             variant="outline"
@@ -193,7 +190,7 @@ export function EventDirectory({
           </Button>
         </div>
       ) : (
-        <EventList items={visible} showFest={showFest} />
+        <EventList items={visible} showProgramme={showProgramme} />
       )}
 
       {filteredOut && moreHref !== undefined && (
@@ -204,7 +201,7 @@ export function EventDirectory({
             className="group h-9 gap-2 rounded-full px-4 text-[13px]"
           >
             <Link to={moreHref}>
-              View all {filtered.length} events
+              See all {filtered.length} events
               <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
             </Link>
           </Button>

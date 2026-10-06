@@ -16,19 +16,19 @@ export default function Events() {
       <main className="flex-1">
         <div className="mx-auto w-full max-w-6xl px-5 pt-16 pb-24 sm:px-8 sm:pt-20">
           <header className="max-w-3xl">
-            <p className="label-eyebrow">Calendar</p>
+            <p className="label-eyebrow">Catalogue</p>
             <h1 className="mt-4 text-[36px] leading-[1.06] font-medium tracking-[-0.035em] text-balance sm:text-[46px]">
-              All events.
+              The catalogue.
             </h1>
             <p className="mt-5 text-[15px] leading-7 text-muted-foreground">
-              Everything on the calendar, across every festival, in date order.
-              Filter by category, search by venue, and take a seat before it
-              goes.
+              Every event open for booking, across every programme, in date
+              order. Filter by category, search by venue, and take a place
+              before it goes.
             </p>
           </header>
 
           <div className="mt-14">
-            <EventDirectory items={events} showFest />
+            <EventDirectory items={events} />
           </div>
         </div>
       </main>

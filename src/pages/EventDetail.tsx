@@ -22,15 +22,20 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@/hooks/use-auth";
 import { useEnsureSeeded } from "@/hooks/use-seed";
 import {
+  durationLabel,
   errorMessage,
   formatLongDate,
+  formatMoney,
   formatTimeRange,
-  durationLabel,
+  initials,
+  priceLabel,
   relativeDay,
   seatSummary,
 } from "@/lib/format";
-import type { EventView } from "@/lib/types";
+import type { CommentView, EventView } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
+import { formatDistanceToNowStrict } from "date-fns";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -39,12 +44,16 @@ import {
   CalendarCheck,
   Check,
   Clock,
+  CreditCard,
+  FileText,
   Loader2,
   MapPin,
+  Paperclip,
   Ticket,
   Users,
+  X,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "sonner";
 
@@ -108,53 +117,111 @@ function Field({
   );
 }
 
-function RegistrationPanel({
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-6 text-[13px]">
+      <dt className="shrink-0 text-muted-foreground">{label}</dt>
+      <dd className="text-right">{value}</dd>
+    </div>
+  );
+}
+
+function PaymentChoice({
+  selected,
+  onSelect,
+  title,
+  detail,
+  icon,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  detail: string;
+  icon: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={cn(
+        "flex w-full items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-colors",
+        selected
+          ? "border-foreground bg-accent/60"
+          : "border-border hover:border-foreground/25",
+      )}
+    >
+      <span
+        className={cn(
+          "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border",
+          selected ? "border-foreground bg-foreground text-background" : "border-border",
+        )}
+      >
+        {selected && <Check className="size-3" />}
+      </span>
+      <span className="min-w-0">
+        <span className="flex items-center gap-2 text-[13px] font-medium tracking-[-0.01em]">
+          {icon}
+          {title}
+        </span>
+        <span className="mt-1 block text-[12px] leading-5 text-muted-foreground">
+          {detail}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------- booking rail */
+
+function BookingPanel({
   event,
-  festName,
-  festSlug,
+  programmeName,
+  programmeSlug,
 }: {
   event: EventView;
-  festName: string | null;
-  festSlug: string | null;
+  programmeName: string | null;
+  programmeSlug: string | null;
 }) {
   const { user, isAuthenticated } = useAuth();
-  const register = useMutation(api.registrations.register);
-  const cancelRegistration = useMutation(api.registrations.cancel);
-  const viewer = useQuery(api.events.getBySlug, { slug: event.slug });
+  const book = useMutation(api.registrations.book);
+  const cancelBooking = useMutation(api.registrations.cancel);
+  const detail = useQuery(api.events.getBySlug, { slug: event.slug });
 
   const [form, setForm] = useState({
     fullName: "",
     email: "",
     phone: "",
-    organization: "",
+    organization: user?.company ?? "",
     notes: "",
   });
   const [edited, setEdited] = useState<Record<string, boolean>>({});
+  const [method, setMethod] = useState<"card" | "on-site">("card");
+  const [step, setStep] = useState<"details" | "checkout">("details");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<{
     reference: string;
     status: string;
-    registrationId: Id<"registrations">;
+    paymentStatus: string;
+    amountPaid: number;
+    bookingId: Id<"registrations">;
   } | null>(null);
 
-  // Fields read from the account until the attendee edits them. Deriving this
-  // during render keeps the prefill out of an effect, so signing in cannot
-  // trigger a second render pass over the whole panel.
+  // Fields read from the account until the customer edits them. Deriving this
+  // during render keeps the prefill out of an effect.
   const fullName = edited.fullName
     ? form.fullName
     : form.fullName || (user?.name ?? "");
-  const email = edited.email
-    ? form.email
-    : form.email || (user?.email ?? "");
+  const email = edited.email ? form.email : form.email || (user?.email ?? "");
 
   const update = (key: keyof typeof form) => (value: string) => {
     setEdited((previous) => ({ ...previous, [key]: true }));
     setForm((previous) => ({ ...previous, [key]: value }));
   };
 
-  const existing = viewer?.viewer.registration ?? null;
-  const activeRegistration =
+  const existing = detail?.viewer.booking ?? null;
+  const activeBooking =
     existing !== null && existing.status !== "cancelled" ? existing : null;
   const claimed =
     event.capacity === 0
@@ -162,32 +229,40 @@ function RegistrationPanel({
       : Math.round((event.seatsTaken / event.capacity) * 100);
   const isFull = event.state === "full";
   const closed = !event.accepting;
+  const payable = event.price > 0;
 
-  async function handleSubmit(submitEvent: React.FormEvent<HTMLFormElement>) {
-    submitEvent.preventDefault();
+  const reference = receipt?.reference ?? activeBooking?.reference ?? null;
+  const paymentStatus =
+    receipt?.paymentStatus ?? activeBooking?.paymentStatus ?? null;
+  const amountPaid = receipt?.amountPaid ?? activeBooking?.amountPaid ?? 0;
+  const bookingId: Id<"registrations"> | null =
+    receipt?.bookingId ?? activeBooking?._id ?? null;
+
+  async function confirm() {
     setPending(true);
     setError(null);
     try {
-      const result = await register({
+      const result = await book({
         eventId: event._id,
         ...form,
         fullName,
         email,
+        paymentMethod: payable ? method : undefined,
       });
       setReceipt({
         reference: result.reference,
         status: result.status,
-        registrationId: result.registrationId,
+        paymentStatus: result.paymentStatus,
+        amountPaid: result.amountPaid,
+        bookingId: result.bookingId,
       });
       toast.success(
         result.status === "waitlisted"
-          ? "You're on the waitlist"
-          : result.alreadyRegistered
-            ? "You're already registered"
-            : "Seat confirmed",
-        {
-          description: `Reference ${result.reference} · ${event.title}`,
-        },
+          ? "Added to the waiting list"
+          : result.alreadyBooked
+            ? "You already have this place"
+            : "Place booked",
+        { description: `Reference ${result.reference} · ${event.title}` },
       );
     } catch (submitError) {
       setError(errorMessage(submitError));
@@ -196,27 +271,28 @@ function RegistrationPanel({
     }
   }
 
-  async function handleCancel(registrationId: Id<"registrations">) {
+  async function release(id: Id<"registrations">) {
     try {
-      await cancelRegistration({ registrationId });
+      await cancelBooking({ registrationId: id });
       setReceipt(null);
-      toast.success("Seat released");
+      setStep("details");
+      toast.success("Booking cancelled");
     } catch (cancelError) {
       toast.error(errorMessage(cancelError));
     }
   }
 
-  const reference = receipt?.reference ?? activeRegistration?.reference ?? null;
-  const status = receipt?.status ?? activeRegistration?.status ?? null;
-  // The receipt is set before the reactive query catches up, so prefer it.
-  const registrationId: Id<"registrations"> | null =
-    receipt?.registrationId ?? activeRegistration?._id ?? null;
+  function paymentLine() {
+    if (paymentStatus === "waived") return "No charge";
+    if (paymentStatus === "paid") return `${formatMoney(amountPaid)} paid`;
+    return `${formatMoney(event.price)} due on the day`;
+  }
 
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
-          <p className="label-eyebrow">Registration</p>
+          <p className="label-eyebrow">Booking</p>
           <span className="text-[11px] tracking-[0.08em] text-muted-foreground uppercase tabular-nums">
             {relativeDay(event.startTime)}
           </span>
@@ -229,17 +305,18 @@ function RegistrationPanel({
           <span className="text-muted-foreground">{seatSummary(event)}</span>
         </div>
         <div className="mt-4 h-px w-full bg-border">
-          <div className="h-px bg-foreground/45" style={{ width: `${claimed}%` }} />
+          <div
+            className="h-px bg-foreground/45"
+            style={{ width: `${claimed}%` }}
+          />
         </div>
         <div className="mt-3 flex items-center justify-between text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
-          <span>{event.fee ?? "Free entry"}</span>
-          <span className="tabular-nums">
-            {event.seatsTaken} registered
-          </span>
+          <span>{priceLabel(event.price)} per place</span>
+          <span className="tabular-nums">{event.seatsTaken} booked</span>
         </div>
       </div>
 
-      {reference !== null && status !== null ? (
+      {reference !== null && paymentStatus !== null ? (
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -249,14 +326,17 @@ function RegistrationPanel({
           <div className="flex items-center gap-2.5">
             <BadgeCheck className="size-4 text-emerald-600" />
             <p className="text-[14px] font-medium tracking-[-0.012em]">
-              {status === "waitlisted" ? "On the waitlist" : "Seat confirmed"}
+              {activeBooking?.status === "waitlisted"
+                ? "On the waiting list"
+                : "Place booked"}
             </p>
           </div>
           <p className="mt-3 text-[13px] leading-6 text-muted-foreground">
-            {status === "waitlisted"
-              ? "The room is full. You move onto the guest list automatically if a seat is released."
+            {activeBooking?.status === "waitlisted"
+              ? "The room is full. You move onto the guest list automatically if a place is released."
               : "Bring this reference with you — it is your place on the guest list."}
           </p>
+
           <div className="mt-5 rounded-md border border-dashed border-border bg-background px-4 py-3">
             <p className="text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
               Reference
@@ -264,15 +344,20 @@ function RegistrationPanel({
             <p className="font-display mt-1 text-[20px] tracking-[0.06em]">
               {reference}
             </p>
+            <p className="mt-2 flex items-center gap-2 text-[12px] text-muted-foreground">
+              <CreditCard className="size-3.5" />
+              {paymentLine()}
+            </p>
           </div>
+
           <div className="mt-5 flex flex-col gap-2">
             <Button asChild size="sm" className="h-9 rounded-full">
               <Link to="/dashboard">
                 <CalendarCheck className="size-3.5" />
-                View my schedule
+                View my bookings
               </Link>
             </Button>
-            {registrationId !== null && (
+            {bookingId !== null && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -280,23 +365,23 @@ function RegistrationPanel({
                     size="sm"
                     className="h-9 rounded-full text-[13px] text-muted-foreground"
                   >
-                    Release my seat
+                    Cancel booking
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Release this seat?</AlertDialogTitle>
+                    <AlertDialogTitle>Cancel this booking?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Your place is offered to the next person on the waitlist.
-                      You can register again while seats remain.
+                      Your place is offered to the next customer on the waiting
+                      list. You can book again while places remain.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Keep it</AlertDialogCancel>
+                    <AlertDialogCancel>Keep booking</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={() => void handleCancel(registrationId)}
+                      onClick={() => void release(bookingId)}
                     >
-                      Release seat
+                      Cancel booking
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -309,11 +394,11 @@ function RegistrationPanel({
           <p className="text-[14px] font-medium tracking-[-0.012em]">
             {event.state === "past"
               ? "This event has finished"
-              : "Registration has closed"}
+              : "Booking has closed"}
           </p>
           <p className="mt-2 text-[13px] leading-6 text-muted-foreground">
             The programme is still open — there are other events in{" "}
-            {festName ?? "this festival"}.
+            {programmeName ?? "this programme"}.
           </p>
           <Button
             asChild
@@ -321,7 +406,7 @@ function RegistrationPanel({
             size="sm"
             className="mt-5 h-9 w-full rounded-full shadow-none"
           >
-            <Link to={festSlug ? `/fests/${festSlug}` : "/events"}>
+            <Link to={programmeSlug ? `/programmes/${programmeSlug}` : "/events"}>
               See the full programme
             </Link>
           </Button>
@@ -329,11 +414,11 @@ function RegistrationPanel({
       ) : !isAuthenticated ? (
         <div className="border-t border-border px-6 py-6">
           <p className="text-[14px] font-medium tracking-[-0.012em]">
-            {isFull ? "Join the waitlist" : "Reserve your seat"}
+            {isFull ? "Join the waiting list" : "Book your place"}
           </p>
           <p className="mt-2 text-[13px] leading-6 text-muted-foreground">
-            Sign in once and this form is already filled in — your name and
-            email come straight from your account.
+            Sign in once and these fields arrive filled in — your name and email
+            come straight from your account.
           </p>
           <Button asChild size="sm" className="mt-5 h-9 w-full rounded-full">
             <Link to={`/auth?returnTo=%2Fevents%2F${event.slug}`}>
@@ -342,13 +427,21 @@ function RegistrationPanel({
             </Link>
           </Button>
         </div>
-      ) : (
+      ) : step === "details" ? (
         <form
-          onSubmit={handleSubmit}
+          onSubmit={(submitEvent) => {
+            submitEvent.preventDefault();
+            setError(null);
+            if (!fullName.trim() || !email.includes("@")) {
+              setError("Add a name and a valid email address to continue.");
+              return;
+            }
+            setStep("checkout");
+          }}
           className="space-y-4 border-t border-border px-6 py-6"
         >
           <p className="text-[14px] font-medium tracking-[-0.012em]">
-            {isFull ? "Join the waitlist" : "Reserve your seat"}
+            {isFull ? "Join the waiting list" : "Book your place"}
           </p>
           <Field
             id="fullName"
@@ -369,7 +462,7 @@ function RegistrationPanel({
           />
           <Field
             id="organization"
-            label="Organization"
+            label="Company"
             value={form.organization}
             onChange={update("organization")}
             placeholder="Where you work"
@@ -386,7 +479,7 @@ function RegistrationPanel({
               htmlFor="notes"
               className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase"
             >
-              Notes for the organizers
+              Notes for the organiser
             </Label>
             <Textarea
               id="notes"
@@ -404,6 +497,96 @@ function RegistrationPanel({
             </p>
           )}
 
+          <Button type="submit" className="h-10 w-full rounded-full">
+            Continue to checkout
+            <ArrowRight className="size-4" />
+          </Button>
+          <p className="text-center text-[11px] text-muted-foreground">
+            Nothing is taken until you confirm on the next step.
+          </p>
+        </form>
+      ) : (
+        <form
+          onSubmit={(submitEvent) => {
+            submitEvent.preventDefault();
+            void confirm();
+          }}
+          className="space-y-5 border-t border-border px-6 py-6"
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-[14px] font-medium tracking-[-0.012em]">
+              Checkout
+            </p>
+            <button
+              type="button"
+              onClick={() => setStep("details")}
+              className="text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Edit details
+            </button>
+          </div>
+
+          <dl className="space-y-3 rounded-md border border-border bg-background px-4 py-4">
+            <SummaryRow label="Event" value={event.title} />
+            <SummaryRow label="When" value={formatLongDate(event.startTime)} />
+            <SummaryRow
+              label="Time"
+              value={formatTimeRange(event.startTime, event.endTime)}
+            />
+            <SummaryRow label="Attendee" value={fullName} />
+            <div className="border-t border-border pt-3">
+              <SummaryRow
+                label="Price per place"
+                value={priceLabel(event.price)}
+              />
+              <div className="mt-3 flex items-baseline justify-between gap-6">
+                <dt className="text-[13px] font-medium">Total</dt>
+                <dd className="font-display text-[18px] tabular-nums">
+                  {priceLabel(event.price)}
+                </dd>
+              </div>
+            </div>
+          </dl>
+
+          {payable ? (
+            <div className="space-y-2.5">
+              <p className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
+                Payment
+              </p>
+              <PaymentChoice
+                selected={method === "card"}
+                onSelect={() => setMethod("card")}
+                title="Pay now by card"
+                detail="Charged immediately and recorded against your booking reference."
+                icon={<CreditCard className="size-3.5" />}
+              />
+              <PaymentChoice
+                selected={method === "on-site"}
+                onSelect={() => setMethod("on-site")}
+                title="Settle on the day"
+                detail="Your place is held and the balance is taken at the desk."
+                icon={<Ticket className="size-3.5" />}
+              />
+              {method === "card" && (
+                <p className="rounded-md border border-dashed border-border px-3 py-2.5 text-[11px] leading-5 text-muted-foreground">
+                  Test mode: card capture runs through a payment provider. No
+                  card is charged until one is connected, and the payment is
+                  recorded against the booking.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="rounded-md border border-border bg-background px-4 py-3 text-[12px] leading-5 text-muted-foreground">
+              This event is free of charge. Nothing is collected at checkout.
+            </p>
+          )}
+
+          {error !== null && (
+            <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[12px] leading-5 text-destructive">
+              {error}
+            </p>
+          )}
+
           <Button
             type="submit"
             disabled={pending}
@@ -412,18 +595,243 @@ function RegistrationPanel({
             {pending ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
-              <Ticket className="size-4" />
+              <Check className="size-4" />
             )}
-            {isFull ? "Join the waitlist" : "Confirm registration"}
+            {isFull
+              ? "Join the waiting list"
+              : payable && method === "card"
+                ? `Pay ${formatMoney(event.price)} and confirm`
+                : "Confirm booking"}
           </Button>
           <p className="text-center text-[11px] text-muted-foreground">
-            A confirmation reference appears immediately.
+            {payable && method === "on-site"
+              ? `${formatMoney(event.price)} stays due until the event.`
+              : "A reference appears immediately after you confirm."}
           </p>
         </form>
       )}
     </div>
   );
 }
+
+/* -------------------------------------------------------------- discussion */
+
+function Discussion({ eventId }: { eventId: Id<"events"> }) {
+  const { isAuthenticated, user } = useAuth();
+  const comments = useQuery(api.comments.list, { eventId });
+  const addComment = useMutation(api.comments.add);
+  const removeComment = useMutation(api.comments.remove);
+  const generateUploadUrl = useMutation(api.comments.generateUploadUrl);
+  const [body, setBody] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [pending, setPending] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  function clearFile() {
+    setFile(null);
+    if (fileInput.current !== null) fileInput.current.value = "";
+  }
+
+  async function submit(submitEvent: React.FormEvent<HTMLFormElement>) {
+    submitEvent.preventDefault();
+    const text = body.trim();
+    if (text.length < 3) return;
+    setPending(true);
+    try {
+      // Upload first, so a failed transfer never leaves a post behind without
+      // the file it promised.
+      let attachmentId: Id<"_storage"> | undefined;
+      if (file !== null) {
+        const uploadUrl = await generateUploadUrl();
+        const response = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": file.type || "application/octet-stream" },
+          body: file,
+        });
+        if (!response.ok) {
+          throw new Error("That upload did not finish. Please try again.");
+        }
+        const { storageId } = (await response.json()) as {
+          storageId: Id<"_storage">;
+        };
+        attachmentId = storageId;
+      }
+
+      await addComment({
+        eventId,
+        body: text,
+        attachmentId,
+        attachmentName: file?.name,
+      });
+      setBody("");
+      clearFile();
+      toast.success("Posted");
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  const rows = (comments ?? []) as CommentView[];
+
+  return (
+    <section className="mt-16">
+      <div className="flex items-baseline justify-between border-b border-border pb-3">
+        <h2 className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
+          Questions and notes
+        </h2>
+        <span className="text-[11px] text-muted-foreground tabular-nums">
+          {comments === undefined ? "" : rows.length}
+        </span>
+      </div>
+
+      {isAuthenticated ? (
+        <form onSubmit={submit} className="mt-6">
+          <Textarea
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+            rows={3}
+            placeholder="Ask a question, or leave a note for the other attendees."
+            className="bg-card shadow-none"
+          />
+          {file !== null && (
+            <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-[12px]">
+              <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate">{file.name}</span>
+              <button
+                type="button"
+                onClick={clearFile}
+                aria-label="Remove attachment"
+                className="text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[11px] text-muted-foreground">
+              Posting as {user?.name ?? user?.email ?? "you"}.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInput}
+                type="file"
+                className="hidden"
+                onChange={(changeEvent) =>
+                  setFile(changeEvent.target.files?.[0] ?? null)
+                }
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInput.current?.click()}
+                disabled={pending}
+                className="h-8 gap-1.5 rounded-full border-border px-4 text-[12px] shadow-none"
+              >
+                <Paperclip className="size-3.5" />
+                Attach
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={pending || body.trim().length < 3}
+                className="h-8 rounded-full px-4 text-[12px]"
+              >
+                {pending && <Loader2 className="size-3.5 animate-spin" />}
+                Post
+              </Button>
+            </div>
+          </div>
+        </form>
+      ) : (
+        <p className="mt-6 rounded-md border border-border bg-card px-4 py-3.5 text-[13px] leading-6 text-muted-foreground">
+          <Link
+            to="/auth"
+            className="text-foreground underline decoration-border underline-offset-4"
+          >
+            Sign in
+          </Link>{" "}
+          to join the discussion.
+        </p>
+      )}
+
+      <div className="mt-8">
+        {comments === undefined ? (
+          <div className="space-y-5">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ) : rows.length === 0 ? (
+          <p className="text-[13px] leading-6 text-muted-foreground">
+            Nothing here yet. Ask the first question, or share a document the
+            other attendees might need.
+          </p>
+        ) : (
+          <ul className="space-y-6">
+            {rows.map((comment) => (
+              <li key={comment._id} className="flex gap-4">
+                <span className="grid size-8 shrink-0 place-items-center rounded-full border border-border text-[10px] font-medium">
+                  {initials(comment.authorName)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <p className="text-[13px] font-medium tracking-[-0.01em]">
+                      {comment.authorName}
+                    </p>
+                    {comment.authorCompany !== null && (
+                      <p className="text-[12px] text-muted-foreground">
+                        {comment.authorCompany}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatDistanceToNowStrict(comment.createdAt)} ago
+                    </p>
+                    {comment.userId === user?._id && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await removeComment({ commentId: comment._id });
+                          } catch (error) {
+                            toast.error(errorMessage(error));
+                          }
+                        }}
+                        className="text-[11px] text-muted-foreground transition-colors hover:text-destructive"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-2 text-[13px] leading-6 text-muted-foreground whitespace-pre-line">
+                    {comment.body}
+                  </p>
+                  {comment.attachmentUrl !== null && (
+                    <a
+                      href={comment.attachmentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-flex max-w-full items-center gap-2 rounded-md border border-border px-3 py-2 text-[12px] transition-colors hover:border-foreground/25"
+                    >
+                      <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="truncate">
+                        {comment.attachmentName ?? "Attached file"}
+                      </span>
+                    </a>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------- page */
 
 function DetailSkeleton() {
   return (
@@ -470,11 +878,11 @@ export default function EventDetail() {
               That event is no longer listed.
             </h1>
             <p className="mt-4 text-[14px] leading-7 text-muted-foreground">
-              It may have been removed from its festival, or the link may have
+              It may have been removed from its programme, or the link may have
               changed.
             </p>
             <Button asChild className="mt-8 h-10 rounded-full px-5">
-              <Link to="/events">Back to the calendar</Link>
+              <Link to="/events">Back to the catalogue</Link>
             </Button>
           </div>
         </main>
@@ -483,7 +891,7 @@ export default function EventDetail() {
     );
   }
 
-  const { event, fest, alsoInFest } = data;
+  const { event, fest, alsoInProgramme } = data;
   const paragraphs = (event.description ?? "").split("\n\n").filter(Boolean);
 
   return (
@@ -497,7 +905,7 @@ export default function EventDetail() {
             className="group inline-flex items-center gap-2 text-[12px] tracking-[0.02em] text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
-            All events
+            Back to the catalogue
           </Link>
         </div>
 
@@ -507,14 +915,14 @@ export default function EventDetail() {
               {fest !== null && (
                 <p className="label-eyebrow">
                   <Link
-                    to={`/fests/${fest.slug}`}
+                    to={`/programmes/${fest.slug}`}
                     className="transition-colors hover:text-foreground"
                   >
                     {fest.organization}
                   </Link>
                   <span className="px-2 text-border">·</span>
                   <Link
-                    to={`/fests/${fest.slug}`}
+                    to={`/programmes/${fest.slug}`}
                     className="transition-colors hover:text-foreground"
                   >
                     {fest.name}
@@ -558,7 +966,10 @@ export default function EventDetail() {
                 <Fact
                   icon={<Clock className="size-3.5" />}
                   label="Time"
-                  value={`${formatTimeRange(event.startTime, event.endTime)} · ${durationLabel(event.startTime, event.endTime)}`}
+                  value={`${formatTimeRange(event.startTime, event.endTime)} · ${durationLabel(
+                    event.startTime,
+                    event.endTime,
+                  )}`}
                 />
                 <Fact
                   icon={<MapPin className="size-3.5" />}
@@ -567,8 +978,8 @@ export default function EventDetail() {
                 />
                 <Fact
                   icon={<Users className="size-3.5" />}
-                  label="Capacity"
-                  value={`${event.capacity} places · ${event.seatsTaken} taken`}
+                  label="Places"
+                  value={`${event.capacity} places · ${event.seatsTaken} booked · ${priceLabel(event.price)} each`}
                 />
               </div>
 
@@ -589,15 +1000,17 @@ export default function EventDetail() {
               )}
 
               <section className="mt-16">
-                <h2 className="label-eyebrow">Registration information</h2>
+                <h2 className="label-eyebrow">Booking and payment</h2>
                 <ul className="mt-6 max-w-2xl space-y-4 border-t border-border pt-6">
                   {[
-                    event.fee !== null
-                      ? `Entry: ${event.fee}.`
-                      : "Entry is free for registered attendees.",
-                    `${event.capacity - event.seatsTaken > 0 ? `${event.capacity - event.seatsTaken} places remain` : "The room is full"} — once it is full, new registrations join the waitlist.`,
-                    "A reference code is issued immediately and appears on your schedule.",
-                    "Releasing a seat passes it to the next person on the waitlist.",
+                    event.price === 0
+                      ? "There is no charge for this event."
+                      : `${formatMoney(event.price)} per place. Pay by card at checkout, or settle on the day.`,
+                    event.capacity - event.seatsTaken > 0
+                      ? `${event.capacity - event.seatsTaken} places remain. Once they are gone, new bookings join the waiting list.`
+                      : "The room is full. New bookings join the waiting list and are promoted automatically.",
+                    "A booking reference is issued immediately and appears on your own schedule.",
+                    "Cancelling releases your place to the next customer on the waiting list.",
                   ].map((line) => (
                     <li key={line} className="flex gap-3 text-[13px] leading-6">
                       <Check className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
@@ -607,23 +1020,27 @@ export default function EventDetail() {
                 </ul>
               </section>
 
-              {alsoInFest.length > 0 && fest !== null && (
+              <Discussion eventId={event._id} />
+
+              {alsoInProgramme.length > 0 && fest !== null && (
                 <section className="mt-16">
-                  <h2 className="label-eyebrow">
-                    Also in {fest.name}
-                  </h2>
+                  <h2 className="label-eyebrow">Also in {fest.name}</h2>
                   <div className="mt-5">
-                    <EventList items={alsoInFest} grouped={false} showFest={false} />
+                    <EventList
+                      items={alsoInProgramme}
+                      grouped={false}
+                      showProgramme={false}
+                    />
                   </div>
                 </section>
               )}
             </article>
 
             <aside className="lg:sticky lg:top-24 lg:h-fit">
-              <RegistrationPanel
+              <BookingPanel
                 event={event}
-                festName={fest?.name ?? null}
-                festSlug={fest?.slug ?? null}
+                programmeName={fest?.name ?? null}
+                programmeSlug={fest?.slug ?? null}
               />
             </aside>
           </div>

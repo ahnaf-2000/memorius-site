@@ -4,7 +4,30 @@ import {
   isSameMonth,
   isSameYear,
 } from "date-fns";
-import type { EventView, SeatState } from "./types";
+import type {
+  BookingView,
+  EventView,
+  PaymentStatus,
+  SeatState,
+} from "./types";
+
+/** Prices are held in minor units and shown in one currency across the product. */
+export const CURRENCY = "USD";
+
+export function formatMoney(minorUnits: number) {
+  const whole = minorUnits % 100 === 0;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: CURRENCY,
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: whole ? 0 : 2,
+  }).format(minorUnits / 100);
+}
+
+/** "No charge" reads better than "$0" on a public page. */
+export function priceLabel(minorUnits: number) {
+  return minorUnits === 0 ? "No charge" : formatMoney(minorUnits);
+}
 
 /** The one colour allowed to interrupt the monochrome palette: a status dot. */
 export const seatTone: Record<SeatState, string> = {
@@ -13,6 +36,12 @@ export const seatTone: Record<SeatState, string> = {
   full: "bg-stone-400",
   closed: "bg-stone-400",
   past: "bg-stone-300",
+};
+
+export const paymentTone: Record<PaymentStatus, string> = {
+  paid: "bg-emerald-600",
+  due: "bg-amber-500",
+  waived: "bg-stone-300",
 };
 
 export function dayParts(ts: number) {
@@ -24,12 +53,24 @@ export function dayParts(ts: number) {
   };
 }
 
-/** Plain-language availability, used by event rows, cards and the rail. */
+/** Plain-language availability, used by event rows, cards and the booking rail. */
 export function seatSummary(event: EventView) {
   if (event.state === "past") return "Finished";
-  if (event.state === "closed") return "Registration closed";
-  if (event.state === "full") return "Join the waitlist";
-  return `${event.remaining} of ${event.capacity} seats left`;
+  if (event.state === "closed") return "Booking closed";
+  if (event.state === "full") return "Join the waiting list";
+  return `${event.remaining} of ${event.capacity} places available`;
+}
+
+/** What the customer owes, or has already settled. */
+export function paymentSummary(
+  booking: Pick<BookingView, "paymentStatus" | "amountPaid">,
+  price: number,
+) {
+  if (booking.paymentStatus === "waived" || price === 0) return "No charge";
+  if (booking.paymentStatus === "paid") {
+    return `${formatMoney(booking.amountPaid)} paid`;
+  }
+  return `${formatMoney(price)} due`;
 }
 
 export function formatTime(ts: number) {
@@ -115,7 +156,7 @@ export function fromDateTimeInput(value: string): number | null {
 
 /**
  * Convex wraps thrown messages in transport noise. Surface the sentence the
- * server actually wrote so the form can show something a person can act on.
+ * server actually wrote so a form can show something a person can act on.
  */
 export function errorMessage(error: unknown) {
   const raw = error instanceof Error ? error.message : String(error);

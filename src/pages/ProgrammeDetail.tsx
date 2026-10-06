@@ -1,5 +1,5 @@
 import { EventList } from "@/components/site/EventList";
-import { FestPhaseTag } from "@/components/site/FestCard";
+import { ProgrammePhaseTag } from "@/components/site/FestCard";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ function StatBlock({ value, label }: { value: string; label: string }) {
   );
 }
 
-export default function FestDetail() {
+export default function ProgrammeDetail() {
   useEnsureSeeded();
   const { slug } = useParams<{ slug: string }>();
   const data = useQuery(api.fests.getBySlug, slug ? { slug } : "skip");
@@ -52,10 +52,10 @@ export default function FestDetail() {
           <div className="mx-auto max-w-xl px-5 py-32 text-center sm:px-8">
             <p className="label-eyebrow">Not found</p>
             <h1 className="mt-4 text-[28px] font-medium tracking-[-0.03em]">
-              That festival is no longer listed.
+              That programme is no longer listed.
             </h1>
             <Button asChild className="mt-8 h-10 rounded-full px-5">
-              <Link to="/fests">Back to festivals</Link>
+              <Link to="/programmes">Back to programmes</Link>
             </Button>
           </div>
         </main>
@@ -74,11 +74,11 @@ export default function FestDetail() {
       <main className="flex-1">
         <div className="mx-auto w-full max-w-6xl px-5 pt-8 sm:px-8">
           <Link
-            to="/fests"
+            to="/programmes"
             className="group inline-flex items-center gap-2 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
-            All festivals
+            All programmes
           </Link>
         </div>
 
@@ -86,7 +86,7 @@ export default function FestDetail() {
           <header className="mt-8 border-b border-border pb-12">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <p className="label-eyebrow">{fest.organization}</p>
-              <FestPhaseTag phase={fest.phase} />
+              <ProgrammePhaseTag phase={fest.phase} />
             </div>
 
             <h1 className="mt-6 max-w-3xl text-[36px] leading-[1.04] font-medium tracking-[-0.038em] text-balance sm:text-[48px]">
@@ -114,13 +114,11 @@ export default function FestDetail() {
 
           <div className="grid grid-cols-2 gap-8 border-b border-border py-10 sm:grid-cols-4">
             <StatBlock value={String(fest.eventCount)} label="Events" />
-            <StatBlock value={String(fest.capacity)} label="Seats offered" />
-            <StatBlock value={String(fest.seatsTaken)} label="Seats claimed" />
+            <StatBlock value={String(fest.capacity)} label="Places" />
+            <StatBlock value={String(fest.seatsTaken)} label="Booked" />
             <StatBlock
-              value={String(
-                Math.max(0, fest.capacity - fest.seatsTaken),
-              )}
-              label="Seats remaining"
+              value={String(Math.max(0, fest.capacity - fest.seatsTaken))}
+              label="Still available"
             />
           </div>
 
@@ -137,7 +135,8 @@ export default function FestDetail() {
               <div>
                 <p className="label-eyebrow">The programme</p>
                 <h2 className="mt-3 text-[22px] font-medium tracking-[-0.024em]">
-                  {upcoming.length} of {fest.eventCount} events still ahead
+                  {upcoming.length} of {fest.eventCount} events still open for
+                  booking
                 </h2>
               </div>
               <Button
@@ -146,14 +145,14 @@ export default function FestDetail() {
                 className="group h-9 gap-2 rounded-full px-4 text-[13px]"
               >
                 <Link to="/events">
-                  See every event
+                  See the whole catalogue
                   <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                 </Link>
               </Button>
             </div>
 
             <div className="mt-10">
-              <EventList items={events} showFest={false} />
+              <EventList items={events} showProgramme={false} />
             </div>
           </section>
         </div>

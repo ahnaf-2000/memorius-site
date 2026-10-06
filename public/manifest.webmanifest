@@ -1,7 +1,7 @@
 {
-  "name": "Cadence",
-  "short_name": "Cadence",
-  "description": "Festivals, events and registrations in one calm place.",
+  "name": "Memorius",
+  "short_name": "Memorius",
+  "description": "Find, book and manage events in one calm, considered place.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fdfdfb",

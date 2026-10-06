@@ -9,7 +9,10 @@ import type { Id } from "@/convex/_generated/dataModel";
  */
 
 export type SeatState = "open" | "few" | "full" | "closed" | "past";
-export type FestPhase = "upcoming" | "live" | "past";
+export type ProgrammePhase = "upcoming" | "live" | "past";
+export type PaymentStatus = "paid" | "due" | "waived";
+export type PaymentMethod = "card" | "on-site";
+export type BookingStatus = "confirmed" | "waitlisted" | "cancelled";
 
 export interface EventView {
   _id: Id<"events">;
@@ -27,7 +30,8 @@ export interface EventView {
   capacity: number;
   seatsTaken: number;
   remaining: number;
-  fee: string | null;
+  /** Minor units. Zero means no charge. */
+  price: number;
   registrationClosesAt: number | null;
   state: SeatState;
   stateLabel: string;
@@ -40,7 +44,7 @@ export interface EventListItem extends EventView {
   organization: string;
 }
 
-export interface FestView {
+export interface ProgrammeView {
   _id: Id<"fests">;
   organization: string;
   name: string;
@@ -53,38 +57,65 @@ export interface FestView {
   status: "draft" | "published" | "archived";
   owned: boolean;
   showcase: boolean;
-  phase: FestPhase;
+  phase: ProgrammePhase;
 }
 
-export interface FestListItem extends FestView {
+export interface ProgrammeListItem extends ProgrammeView {
   eventCount: number;
   seatsTaken: number;
   capacity: number;
-  /** Only the public festival directory computes these. */
+  /** Only the public programme directory computes these. */
   categories?: string[];
 }
 
-export interface RegistrationView {
+export interface BookingView {
   _id: Id<"registrations">;
-  status: "confirmed" | "waitlisted" | "cancelled";
+  status: BookingStatus;
+  paymentStatus: PaymentStatus;
+  paymentMethod: PaymentMethod | null;
+  amountPaid: number;
   reference: string;
   createdAt: number;
   fullName: string;
   email: string;
   eventId: Id<"events">;
   event: EventView | null;
-  fest: FestView | null;
+  fest: ProgrammeView | null;
   upcoming: boolean;
 }
 
-export interface AttendeeView {
+export interface GuestView {
   _id: Id<"registrations">;
   fullName: string;
   email: string;
   phone: string | null;
   organization: string | null;
   notes: string | null;
-  status: "confirmed" | "waitlisted" | "cancelled";
+  status: BookingStatus;
+  paymentStatus: PaymentStatus;
+  paymentMethod: PaymentMethod | null;
+  amountPaid: number;
   reference: string;
+  createdAt: number;
+}
+
+export interface BusinessBookingView extends GuestView {
+  eventTitle: string;
+  eventSlug: string;
+  eventStart: number;
+  price: number;
+  programmeName: string;
+}
+
+export interface CommentView {
+  _id: Id<"comments">;
+  eventId: Id<"events">;
+  userId: Id<"users">;
+  authorName: string;
+  authorCompany: string | null;
+  body: string;
+  attachmentName: string | null;
+  /** Resolved from storage when the post is read. */
+  attachmentUrl: string | null;
   createdAt: number;
 }

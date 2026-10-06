@@ -13,10 +13,11 @@ import "./index.css";
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const Events = lazy(() => import("./pages/Events.tsx"));
 const EventDetail = lazy(() => import("./pages/EventDetail.tsx"));
-const Fests = lazy(() => import("./pages/Fests.tsx"));
-const FestDetail = lazy(() => import("./pages/FestDetail.tsx"));
+const Programmes = lazy(() => import("./pages/Programmes.tsx"));
+const ProgrammeDetail = lazy(() => import("./pages/ProgrammeDetail.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
+const Admin = lazy(() => import("./pages/Admin.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -126,8 +127,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/" element={<Landing />} />
               <Route path="/events" element={<Events />} />
               <Route path="/events/:slug" element={<EventDetail />} />
-              <Route path="/fests" element={<Fests />} />
-              <Route path="/fests/:slug" element={<FestDetail />} />
+              <Route path="/programmes" element={<Programmes />} />
+              <Route path="/programmes/:slug" element={<ProgrammeDetail />} />
               <Route
                 path="/auth"
                 element={<AuthPage redirectAfterAuth="/dashboard" />}
@@ -137,6 +138,14 @@ createRoot(document.getElementById("root")!).render(
                 element={
                   <RequireAuth>
                     <Dashboard />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <RequireAuth>
+                    <Admin />
                   </RequireAuth>
                 }
               />

@@ -3,19 +3,19 @@ import { Link } from "react-router";
 
 const COLUMNS = [
   {
-    heading: "Attend",
+    heading: "Customers",
     links: [
-      { to: "/events", label: "All events" },
-      { to: "/fests", label: "Festivals" },
-      { to: "/dashboard", label: "My schedule" },
+      { to: "/events", label: "Catalogue" },
+      { to: "/programmes", label: "Programmes" },
+      { to: "/dashboard", label: "My bookings" },
     ],
   },
   {
-    heading: "Organize",
+    heading: "Businesses",
     links: [
-      { to: "/dashboard", label: "Organizer studio" },
-      { to: "/dashboard", label: "Registration desk" },
-      { to: "/auth?returnTo=%2Fdashboard", label: "Create an account" },
+      { to: "/admin", label: "Admin console" },
+      { to: "/auth?returnTo=%2Fadmin", label: "Create an account" },
+      { to: "/auth?returnTo=%2Fdashboard", label: "Sign in" },
     ],
   },
 ];
@@ -27,8 +27,9 @@ export function SiteFooter() {
         <div>
           <Brand />
           <p className="mt-5 max-w-xs text-[13px] leading-6 text-muted-foreground">
-            Festivals, events and registrations in one calm place. Built for
-            people whose calendars are already full.
+            The event catalogue and booking desk for businesses. Customers
+            search, book and pay in one place; the business sees all of it in
+            one console.
           </p>
         </div>
 
@@ -53,9 +54,9 @@ export function SiteFooter() {
 
       <div className="border-t border-border">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-5 py-6 text-[11px] tracking-[0.04em] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <span>© {new Date().getFullYear()} Cadence</span>
+          <span>© {new Date().getFullYear()} Memorius</span>
           <span className="uppercase">
-            Organization · Festival · Event · Registration
+            Business · Programme · Event · Booking
           </span>
         </div>
       </div>

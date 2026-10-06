@@ -1,9 +1,9 @@
 import { EventDirectory } from "@/components/site/EventDirectory";
-import { FestCard } from "@/components/site/FestCard";
+import { StatusDot } from "@/components/site/EventList";
+import { ProgrammeCard } from "@/components/site/FestCard";
 import { SectionHeading } from "@/components/site/SectionHeading";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
-import { StatusDot } from "@/components/site/EventList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,18 +12,14 @@ import { useEnsureSeeded } from "@/hooks/use-seed";
 import {
   dayParts,
   formatTimeRange,
+  priceLabel,
   relativeDay,
   seatSummary,
 } from "@/lib/format";
-import type { EventListItem, FestListItem } from "@/lib/types";
+import type { EventListItem, ProgrammeListItem } from "@/lib/types";
 import { useQuery } from "convex/react";
 import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  CalendarCheck,
-  GaugeCircle,
-  Layers3,
-} from "lucide-react";
+import { ArrowRight, CalendarCheck, GaugeCircle, Layers3 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
@@ -32,23 +28,23 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 const FLOW = [
   {
     index: "01",
-    title: "Organization",
-    copy: "One account owns every festival it runs, and every registration it collects.",
+    title: "Business",
+    copy: "One account holds every programme it runs and every booking it takes.",
   },
   {
     index: "02",
-    title: "Festival",
-    copy: "Each fest holds its own programme, dates, venue and public page.",
+    title: "Programme",
+    copy: "A named season with its own dates, venue and public page.",
   },
   {
     index: "03",
     title: "Event",
-    copy: "Date, time, venue, capacity and registration information on a single page.",
+    copy: "Date, time, venue, places and price on a single page.",
   },
   {
     index: "04",
-    title: "Registration",
-    copy: "A held seat, a confirmation code, and a place on your own schedule.",
+    title: "Booking",
+    copy: "A held place, a payment record, and a line on your own schedule.",
   },
 ];
 
@@ -91,7 +87,7 @@ function NextEventCard({ event }: { event: EventListItem }) {
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <p className="label-eyebrow">Next on the calendar</p>
+        <p className="label-eyebrow">Next available</p>
         <span className="text-[11px] tracking-[0.08em] text-muted-foreground uppercase">
           {relativeDay(event.startTime)}
         </span>
@@ -125,8 +121,12 @@ function NextEventCard({ event }: { event: EventListItem }) {
             ["Time", formatTimeRange(event.startTime, event.endTime)],
             ["Venue", event.venue],
             ["Category", event.category],
+            ["Price per place", priceLabel(event.price)],
           ].map(([label, value]) => (
-            <div key={label} className="flex items-baseline justify-between gap-6">
+            <div
+              key={label}
+              className="flex items-baseline justify-between gap-6"
+            >
               <dt className="shrink-0 text-muted-foreground">{label}</dt>
               <dd className="truncate text-right">{value}</dd>
             </div>
@@ -141,15 +141,15 @@ function NextEventCard({ event }: { event: EventListItem }) {
         </dl>
       </div>
 
-      <div className="flex items-center gap-2 border-t border-border px-6 py-4">
+      <div className="flex items-center gap-3 border-t border-border px-6 py-4">
         <Button asChild size="sm" className="h-9 gap-1.5 rounded-full px-4">
           <Link to={`/events/${event.slug}`}>
-            Reserve a seat
+            Reserve a place
             <ArrowRight className="size-3.5" />
           </Link>
         </Button>
         <span className="text-[12px] text-muted-foreground">
-          {event.fee ?? "Free entry"}
+          {event.category}
         </span>
       </div>
     </div>
@@ -172,10 +172,7 @@ function DemandRow({ event }: { event: EventListItem }) {
         </span>
       </div>
       <div className="mt-3 h-px w-full bg-border">
-        <div
-          className="h-px bg-foreground/45"
-          style={{ width: `${claimed}%` }}
-        />
+        <div className="h-px bg-foreground/45" style={{ width: `${claimed}%` }} />
       </div>
     </div>
   );
@@ -184,7 +181,7 @@ function DemandRow({ event }: { event: EventListItem }) {
 export default function Landing() {
   useEnsureSeeded();
   const events = useQuery(api.events.list);
-  const fests = useQuery(api.fests.list);
+  const programmes = useQuery(api.fests.list);
 
   const upcoming = (events ?? []).filter((event) => event.state !== "past");
   const nextEvent = upcoming[0];
@@ -192,7 +189,7 @@ export default function Landing() {
     (sum, event) => sum + event.capacity,
     0,
   );
-  const totalClaimed = (events ?? []).reduce(
+  const totalBooked = (events ?? []).reduce(
     (sum, event) => sum + event.seatsTaken,
     0,
   );
@@ -221,23 +218,23 @@ export default function Landing() {
                   variant="outline"
                   className="rounded-full border-border px-3 py-1 text-[11px] font-normal tracking-[0.08em] text-muted-foreground uppercase"
                 >
-                  Registration without the Google Form
+                  Booking for business events
                 </Badge>
               </Reveal>
 
               <Reveal delay={0.06}>
                 <h1 className="mt-8 text-[44px] leading-[1.02] font-medium tracking-[-0.04em] text-balance sm:text-[62px]">
-                  Every event,{" "}
-                  <em className="font-display font-normal italic">calmly</em>{" "}
-                  organized.
+                  Find your next event, and{" "}
+                  <em className="font-display font-normal italic">book it</em>{" "}
+                  in a minute.
                 </h1>
               </Reveal>
 
               <Reveal delay={0.12}>
                 <p className="mt-7 max-w-xl text-[15px] leading-7 text-muted-foreground sm:text-[16px]">
-                  Cadence is the registration desk for organizations that host
-                  festivals. Browse every event across every fest, see exactly
-                  what is left, and hold your place in under a minute.
+                  Memorius is the catalogue your customers browse and the
+                  booking desk your business runs. Search every programme, open
+                  an event, choose how you pay, and keep it all on one schedule.
                 </p>
               </Reveal>
 
@@ -249,7 +246,7 @@ export default function Landing() {
                     className="h-11 gap-2 rounded-full px-6 text-[14px]"
                   >
                     <Link to="/events">
-                      Browse all events
+                      Browse the catalogue
                       <ArrowRight className="size-4" />
                     </Link>
                   </Button>
@@ -259,7 +256,7 @@ export default function Landing() {
                     variant="outline"
                     className="h-11 rounded-full border-border px-6 text-[14px] shadow-none"
                   >
-                    <Link to="/dashboard">For organizers</Link>
+                    <Link to="/admin">For businesses</Link>
                   </Button>
                 </div>
               </Reveal>
@@ -267,22 +264,24 @@ export default function Landing() {
               <Reveal delay={0.26}>
                 <div className="mt-14 grid grid-cols-2 gap-8 border-t border-border pt-8 sm:grid-cols-4">
                   <Stat
-                    value={fests === undefined ? "—" : number(fests.length)}
-                    label="Festivals"
+                    value={
+                      programmes === undefined
+                        ? "—"
+                        : number(programmes.length)
+                    }
+                    label="Programmes"
                   />
                   <Stat
                     value={events === undefined ? "—" : number(events.length)}
                     label="Events"
                   />
                   <Stat
-                    value={
-                      events === undefined ? "—" : number(totalCapacity)
-                    }
-                    label="Seats offered"
+                    value={events === undefined ? "—" : number(totalCapacity)}
+                    label="Places"
                   />
                   <Stat
-                    value={events === undefined ? "—" : number(totalClaimed)}
-                    label="Seats claimed"
+                    value={events === undefined ? "—" : number(totalBooked)}
+                    label="Booked"
                   />
                 </div>
               </Reveal>
@@ -290,7 +289,7 @@ export default function Landing() {
 
             <Reveal delay={0.2} className="lg:pt-4">
               {nextEvent === undefined ? (
-                <Skeleton className="h-[420px] w-full rounded-lg" />
+                <Skeleton className="h-[440px] w-full rounded-lg" />
               ) : (
                 <NextEventCard event={nextEvent} />
               )}
@@ -298,16 +297,16 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* The essentials: every event */}
+        {/* The catalogue */}
         <section
-          id="events"
+          id="catalogue"
           className="scroll-mt-24 border-t border-border bg-background"
         >
           <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
             <SectionHeading
-              eyebrow="The essentials"
-              title="Every event, across every festival."
-              description="Search by name, venue or category. Seats update the moment somebody else takes one, so what you see is what is left."
+              eyebrow="The catalogue"
+              title="Every event, open for booking."
+              description="Search by name, venue or category. Availability updates the moment another customer books, so what you see is what is left."
               action={
                 <Button
                   asChild
@@ -315,49 +314,48 @@ export default function Landing() {
                   className="group h-9 gap-2 rounded-full px-4 text-[13px]"
                 >
                   <Link to="/events">
-                    Open the calendar
+                    Open the catalogue
                     <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </Button>
               }
             />
             <div className="mt-10">
-              <EventDirectory
-                items={events}
-                limit={5}
-                moreHref="/events"
-              />
+              <EventDirectory items={events} limit={5} moreHref="/events" />
             </div>
           </div>
         </section>
 
-        {/* Festivals */}
+        {/* Programmes */}
         <section className="border-t border-border">
           <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
             <SectionHeading
-              eyebrow="Festivals"
-              title="A festival is a season, not a spreadsheet."
-              description="Each fest collects its own programme, so the whole line-up stays readable long after the last announcement."
+              eyebrow="Programmes"
+              title="A programme is a season, not a spreadsheet."
+              description="Programmes group the events a business runs together, so a full calendar stays readable long after the last announcement."
               action={
                 <Button
                   asChild
                   variant="ghost"
                   className="group h-9 gap-2 rounded-full px-4 text-[13px]"
                 >
-                  <Link to="/fests">
-                    All festivals
+                  <Link to="/programmes">
+                    All programmes
                     <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </Button>
               }
             />
             <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {fests === undefined
+              {programmes === undefined
                 ? Array.from({ length: 3 }).map((_, index) => (
                     <Skeleton key={index} className="h-64 rounded-lg" />
                   ))
-                : fests.map((fest: FestListItem) => (
-                    <FestCard key={fest._id} fest={fest} />
+                : programmes.map((programme: ProgrammeListItem) => (
+                    <ProgrammeCard
+                      key={programme._id}
+                      programme={programme}
+                    />
                   ))}
             </div>
           </div>
@@ -369,7 +367,7 @@ export default function Landing() {
             <SectionHeading
               eyebrow="How it works"
               title="Four steps, in this order, every time."
-              description="The structure that makes a programme legible: an organization runs festivals, a festival holds events, an event collects registrations."
+              description="The structure that keeps a calendar legible: a business runs programmes, a programme holds events, an event takes bookings."
             />
             <div className="mt-12 grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
               {FLOW.map((step) => (
@@ -392,37 +390,37 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Organizers */}
+        {/* For businesses */}
         <section className="border-t border-border">
           <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
             <div className="grid gap-16 lg:grid-cols-2 lg:gap-24">
               <div>
-                <p className="label-eyebrow">For organizers</p>
+                <p className="label-eyebrow">For businesses</p>
                 <h2 className="mt-3 text-[26px] leading-[1.2] font-medium tracking-[-0.028em] text-balance sm:text-[32px]">
-                  Run the festival. Skip the spreadsheet.
+                  Run the programme. Skip the spreadsheet.
                 </h2>
                 <p className="mt-5 max-w-lg text-[14px] leading-7 text-muted-foreground">
-                  Publish a festival in a minute, add its events, and watch the
-                  registrations arrive on one screen. No shared inbox, no
-                  copying rows out of a form.
+                  Publish a programme in a minute, add its events, set a price
+                  per place, and watch bookings and payments arrive on one
+                  screen. No shared inbox, no rows copied out of a form.
                 </p>
 
                 <ul className="mt-10 space-y-7 border-t border-border pt-8">
                   {[
                     {
                       icon: Layers3,
-                      title: "Festivals and events, together",
-                      copy: "Create a fest, then add events to it. Renaming or rescheduling never breaks a link.",
+                      title: "Programmes and events, together",
+                      copy: "Create a programme, then add events to it. Renaming or rescheduling never breaks a link.",
                     },
                     {
                       icon: CalendarCheck,
-                      title: "Registrations that settle themselves",
-                      copy: "Seats count down on their own, and a cancellation quietly promotes the next person on the waitlist.",
+                      title: "Bookings that settle themselves",
+                      copy: "Places count down on their own, and a cancellation quietly promotes the next customer on the waiting list.",
                     },
                     {
                       icon: GaugeCircle,
-                      title: "One screen to monitor",
-                      copy: "See confirmed, waitlisted and cancelled numbers per event without exporting anything.",
+                      title: "One console to monitor",
+                      copy: "See confirmed places, waiting lists, money taken and money outstanding per event, without exporting anything.",
                     },
                   ].map((item) => (
                     <li key={item.title} className="flex gap-4">
@@ -447,8 +445,8 @@ export default function Landing() {
                   variant="outline"
                   className="mt-10 h-11 gap-2 rounded-full border-border px-6 text-[14px] shadow-none"
                 >
-                  <Link to="/dashboard">
-                    Open the organizer studio
+                  <Link to="/admin">
+                    Open the admin console
                     <ArrowRight className="size-4" />
                   </Link>
                 </Button>
@@ -458,7 +456,7 @@ export default function Landing() {
                 <div className="flex items-center justify-between border-b border-border px-6 py-4">
                   <p className="label-eyebrow">Most in demand</p>
                   <span className="text-[11px] tracking-[0.08em] text-muted-foreground uppercase">
-                    Live seats
+                    Live availability
                   </span>
                 </div>
                 <div className="px-6 py-2">
@@ -475,9 +473,9 @@ export default function Landing() {
                   )}
                 </div>
                 <div className="flex items-center justify-between border-t border-border px-6 py-4 text-[12px] text-muted-foreground">
-                  <span>Updated as registrations arrive</span>
+                  <span>Updated as bookings arrive</span>
                   <Link
-                    to="/fests"
+                    to="/programmes"
                     className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
                   >
                     Browse programmes
@@ -492,12 +490,11 @@ export default function Landing() {
         <section className="border-t border-border">
           <div className="mx-auto w-full max-w-6xl px-5 py-24 text-center sm:px-8 sm:py-32">
             <h2 className="font-display mx-auto max-w-3xl text-[34px] leading-[1.12] tracking-[-0.02em] text-balance sm:text-[46px]">
-              Hold your place in{" "}
-              <em className="italic">under a minute</em>.
+              Take your place in <em className="italic">under a minute</em>.
             </h2>
             <p className="mx-auto mt-6 max-w-xl text-[14px] leading-7 text-muted-foreground">
-              Create an account once, and every registration after that takes
-              two fields and a click.
+              Create an account once, and every booking after it takes two
+              fields and a click.
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
               <Button

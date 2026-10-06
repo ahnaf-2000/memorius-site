@@ -1,4 +1,5 @@
 import { Brand } from "@/components/site/Brand";
+import { SearchPalette } from "@/components/site/SearchPalette";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,14 +19,13 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { ArrowRight, LayoutGrid, LogOut, Menu, Ticket } from "lucide-react";
+import { ArrowRight, LayoutDashboard, LogOut, Menu, Settings2 } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 
-const NAV = [
-  { to: "/events", label: "Events" },
-  { to: "/fests", label: "Festivals" },
-  { to: "/dashboard", label: "Studio" },
+const PRIMARY_NAV = [
+  { to: "/events", label: "Catalogue" },
+  { to: "/programmes", label: "Programmes" },
 ];
 
 export function SiteHeader() {
@@ -40,29 +40,33 @@ export function SiteHeader() {
 
   const name = user?.name ?? user?.email ?? "";
 
+  const navLink = ({ isActive }: { isActive: boolean }) =>
+    cn(
+      "text-[13px] tracking-[-0.005em] transition-colors",
+      isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+    );
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-6 px-5 sm:px-8">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-6 px-5 sm:px-8">
         <Brand />
 
-        <nav className="hidden items-center gap-8 md:flex">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "text-[13px] tracking-[-0.005em] transition-colors",
-                  isActive
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )
-              }
-            >
+        <nav className="hidden items-center gap-7 md:flex">
+          {PRIMARY_NAV.map((item) => (
+            <NavLink key={item.to} to={item.to} className={navLink}>
               {item.label}
             </NavLink>
           ))}
+          {isAuthenticated && (
+            <NavLink to="/admin" className={navLink}>
+              Admin
+            </NavLink>
+          )}
         </nav>
+
+        <div className="ml-auto hidden sm:block">
+          <SearchPalette />
+        </div>
 
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
@@ -71,11 +75,11 @@ export function SiteHeader() {
                 asChild
                 variant="ghost"
                 size="sm"
-                className="hidden text-[13px] sm:inline-flex"
+                className="hidden text-[13px] lg:inline-flex"
               >
                 <Link to="/dashboard">
-                  <LayoutGrid className="size-3.5" />
-                  My schedule
+                  <LayoutDashboard className="size-3.5" />
+                  My bookings
                 </Link>
               </Button>
               <DropdownMenu>
@@ -83,7 +87,7 @@ export function SiteHeader() {
                   <button
                     type="button"
                     aria-label="Account"
-                    className="grid size-8 place-items-center rounded-full border border-border bg-card text-[11px] font-medium tracking-[0.02em] text-foreground transition-colors hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
+                    className="grid size-8 place-items-center rounded-full border border-border bg-card text-[11px] font-medium tracking-[0.02em] transition-colors hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
                   >
                     {initials(name)}
                   </button>
@@ -97,8 +101,15 @@ export function SiteHeader() {
                     className="cursor-pointer"
                     onSelect={() => navigate("/dashboard")}
                   >
-                    <Ticket className="mr-2 size-4" />
-                    My schedule
+                    <LayoutDashboard className="mr-2 size-4" />
+                    My bookings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onSelect={() => navigate("/admin")}
+                  >
+                    <Settings2 className="mr-2 size-4" />
+                    Admin console
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -150,8 +161,11 @@ export function SiteHeader() {
               <div className="px-6 pt-6">
                 <Brand />
               </div>
-              <nav className="mt-8 flex flex-col px-3">
-                {NAV.map((item) => (
+              <div className="px-6 pt-6 sm:hidden">
+                <SearchPalette />
+              </div>
+              <nav className="mt-6 flex flex-col px-3">
+                {PRIMARY_NAV.map((item) => (
                   <SheetClose asChild key={item.to}>
                     <Link
                       to={item.to}
@@ -161,6 +175,26 @@ export function SiteHeader() {
                     </Link>
                   </SheetClose>
                 ))}
+                {isAuthenticated && (
+                  <>
+                    <SheetClose asChild>
+                      <Link
+                        to="/dashboard"
+                        className="rounded-md px-3 py-3 text-[15px] tracking-[-0.01em] transition-colors hover:bg-accent"
+                      >
+                        My bookings
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link
+                        to="/admin"
+                        className="rounded-md px-3 py-3 text-[15px] tracking-[-0.01em] transition-colors hover:bg-accent"
+                      >
+                        Admin
+                      </Link>
+                    </SheetClose>
+                  </>
+                )}
               </nav>
               <div className="mt-auto flex flex-col gap-2 border-t border-border p-4">
                 {isAuthenticated ? (
