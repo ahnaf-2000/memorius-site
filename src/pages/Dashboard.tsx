@@ -24,7 +24,6 @@ import {
   formatTimeRange,
   initials,
   paymentTone,
-  relativeDay,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
@@ -90,8 +89,8 @@ function BookingCard({ booking }: { booking: BookingRow }) {
   const parts = dayParts(event.startTime);
 
   return (
-    <div className="grid grid-cols-[auto_1fr] items-start gap-5 border-b border-border py-5 sm:grid-cols-[auto_1fr_auto] sm:gap-7">
-      <div className="flex w-14 flex-col items-center rounded-md border border-border bg-card py-2.5 sm:w-16">
+    <div className="group row-marker relative grid grid-cols-[auto_1fr] items-start gap-5 border-b border-border py-5 pr-1 pl-1 transition-colors duration-300 ease-soft hover:bg-accent/40 sm:grid-cols-[auto_1fr_auto] sm:gap-7">
+      <div className="flex w-14 flex-col items-center rounded-md border border-border bg-card py-2.5 transition-[border-color,box-shadow] duration-300 ease-soft group-hover:border-foreground/15 group-hover:shadow-hairline sm:w-16">
         <span className="text-[10px] leading-none font-medium tracking-[0.14em] text-muted-foreground tabular-nums">
           {parts.month}
         </span>
@@ -106,7 +105,7 @@ function BookingCard({ booking }: { booking: BookingRow }) {
       <div className="min-w-0">
         <Link
           to={`/events/${event.slug}`}
-          className="text-[15px] font-medium tracking-[-0.012em] hover:underline hover:decoration-border hover:underline-offset-4"
+          className="link-quiet text-[15px] font-medium tracking-[-0.012em]"
         >
           {event.title}
         </Link>

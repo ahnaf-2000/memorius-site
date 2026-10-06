@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ArrowRight, LayoutDashboard, LogOut, Menu, Settings2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 
 const PRIMARY_NAV = [
@@ -32,6 +32,18 @@ export function SiteHeader() {
   const { isAuthenticated, user, signOut } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  // The header earns its hairline only once the page has moved under it.
+  useEffect(() => {
+    const read = () => setScrolled(window.scrollY > 8);
+    const frame = requestAnimationFrame(read);
+    window.addEventListener("scroll", read, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", read);
+    };
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -42,12 +54,19 @@ export function SiteHeader() {
 
   const navLink = ({ isActive }: { isActive: boolean }) =>
     cn(
-      "text-[13px] tracking-[-0.005em] transition-colors",
+      "nav-link text-[13px] tracking-[-0.005em] transition-colors duration-200",
       isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
     );
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
+    <header
+      className={cn(
+        "sticky top-0 z-40 border-b backdrop-blur-md transition-[background-color,border-color,box-shadow] duration-300 ease-soft",
+        scrolled
+          ? "border-border bg-background/92 shadow-hairline"
+          : "border-transparent bg-background/80",
+      )}
+    >
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-6 px-5 sm:px-8">
         <Brand />
 

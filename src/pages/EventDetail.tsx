@@ -306,7 +306,7 @@ function BookingPanel({
         </div>
         <div className="mt-4 h-px w-full bg-border">
           <div
-            className="h-px bg-foreground/45"
+            className="h-px bg-foreground/45 transition-[width] duration-700 ease-quint"
             style={{ width: `${claimed}%` }}
           />
         </div>
@@ -438,7 +438,7 @@ function BookingPanel({
             }
             setStep("checkout");
           }}
-          className="space-y-4 border-t border-border px-6 py-6"
+          className="animate-rise space-y-4 border-t border-border px-6 py-6"
         >
           <p className="text-[14px] font-medium tracking-[-0.012em]">
             {isFull ? "Join the waiting list" : "Book your place"}
@@ -511,7 +511,7 @@ function BookingPanel({
             submitEvent.preventDefault();
             void confirm();
           }}
-          className="space-y-5 border-t border-border px-6 py-6"
+          className="animate-rise space-y-5 border-t border-border px-6 py-6"
         >
           <div className="flex items-center justify-between">
             <p className="text-[14px] font-medium tracking-[-0.012em]">

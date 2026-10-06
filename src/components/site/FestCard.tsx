@@ -32,7 +32,7 @@ export function ProgrammeCard({ programme }: { programme: ProgrammeListItem }) {
   return (
     <Link
       to={`/programmes/${programme.slug}`}
-      className="group flex h-full flex-col justify-between rounded-lg border border-border bg-card p-7 transition-colors hover:border-foreground/20"
+      className="group surface-card flex h-full flex-col justify-between rounded-lg border border-border bg-card p-7 shadow-hairline hover:border-foreground/15"
     >
       <div>
         <div className="flex items-start justify-between gap-4">
@@ -62,14 +62,14 @@ export function ProgrammeCard({ programme }: { programme: ProgrammeListItem }) {
 
         <div className="mt-4 h-px w-full overflow-hidden bg-border">
           <div
-            className="h-px bg-foreground/40 transition-all duration-500"
+            className="h-px bg-foreground/40 transition-[width] duration-700 ease-quint"
             style={{ width: `${claimed}%` }}
           />
         </div>
 
         <div className="mt-3 flex items-center justify-between text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
           <span className="tabular-nums">{claimed}% of places booked</span>
-          <span className="flex items-center gap-1.5 text-foreground/70 opacity-0 transition-opacity group-hover:opacity-100">
+          <span className="flex -translate-x-1 items-center gap-1.5 text-foreground/70 opacity-0 transition-[opacity,transform] duration-300 ease-soft group-hover:translate-x-0 group-hover:opacity-100">
             View programme
             <ArrowRight className="size-3" />
           </span>

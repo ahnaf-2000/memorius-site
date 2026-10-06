@@ -13,7 +13,11 @@ import { cn } from "@/lib/utils";
 import { ArrowUpRight } from "lucide-react";
 import { Link } from "react-router";
 
-/** The one dot of colour in the whole interface. */
+/**
+ * The one dot of colour in the whole interface. When an event is down to its
+ * last places the dot also breathes, which is the only thing on the page that
+ * moves on its own.
+ */
 export function StatusDot({
   state,
   className,
@@ -23,9 +27,22 @@ export function StatusDot({
 }) {
   return (
     <span
-      className={cn("size-1.5 shrink-0 rounded-full", seatTone[state], className)}
+      className={cn(
+        "relative inline-flex size-1.5 shrink-0 items-center justify-center",
+        className,
+      )}
       aria-hidden="true"
-    />
+    >
+      {state === "few" && (
+        <span
+          className={cn(
+            "animate-halo absolute inset-0 rounded-full",
+            seatTone[state],
+          )}
+        />
+      )}
+      <span className={cn("size-1.5 rounded-full", seatTone[state])} />
+    </span>
   );
 }
 
@@ -43,9 +60,9 @@ export function EventRow({
   return (
     <Link
       to={`/events/${event.slug}`}
-      className="group grid grid-cols-[auto_1fr_auto] items-center gap-5 border-b border-border py-5 pr-1 pl-1 transition-colors hover:bg-accent/50 sm:gap-7 sm:py-6"
+      className="group row-marker relative grid grid-cols-[auto_1fr_auto] items-center gap-5 border-b border-border py-5 pr-1 pl-1 transition-colors duration-300 ease-soft hover:bg-accent/50 sm:gap-7 sm:py-6"
     >
-      <div className="flex w-14 flex-col items-center justify-center rounded-md border border-border bg-card py-2.5 sm:w-16 sm:py-3">
+      <div className="flex w-14 flex-col items-center justify-center rounded-md border border-border bg-card py-2.5 transition-[border-color,box-shadow,background-color] duration-300 ease-soft group-hover:border-foreground/15 group-hover:shadow-hairline sm:w-16 sm:py-3">
         <span className="text-[10px] leading-none font-medium tracking-[0.14em] text-muted-foreground tabular-nums">
           {parts.month}
         </span>

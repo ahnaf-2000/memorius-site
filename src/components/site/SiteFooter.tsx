@@ -41,7 +41,7 @@ export function SiteFooter() {
                 <li key={`${column.heading}-${link.label}`}>
                   <Link
                     to={link.to}
-                    className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+                    className="link-quiet text-[13px] text-muted-foreground hover:text-foreground"
                   >
                     {link.label}
                   </Link>

@@ -204,11 +204,25 @@ export function SearchPalette({
                   onMouseEnter={() => setActive(index)}
                   onClick={() => go(result)}
                   className={cn(
-                    "flex w-full items-center gap-3.5 px-4 py-3 text-left transition-colors",
+                    "relative flex w-full items-center gap-3.5 px-4 py-3 text-left transition-colors duration-150 ease-soft",
                     index === active ? "bg-accent" : "hover:bg-accent/60",
                   )}
                 >
-                  <span className="grid size-7 shrink-0 place-items-center rounded-md border border-border text-muted-foreground">
+                  <span
+                    className={cn(
+                      "absolute top-1.5 bottom-1.5 left-0 w-px origin-top bg-brand transition-transform duration-300 ease-quint",
+                      index === active ? "scale-y-100" : "scale-y-0",
+                    )}
+                    aria-hidden="true"
+                  />
+                  <span
+                    className={cn(
+                      "grid size-7 shrink-0 place-items-center rounded-md border text-muted-foreground transition-[color,border-color,box-shadow] duration-200 ease-soft",
+                      index === active
+                        ? "border-foreground/20 text-foreground shadow-hairline"
+                        : "border-border",
+                    )}
+                  >
                     {result.kind === "event" ? (
                       <Ticket className="size-3.5" />
                     ) : (

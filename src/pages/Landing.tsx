@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
+import { useCountUp } from "@/hooks/use-count-up";
 import { useEnsureSeeded } from "@/hooks/use-seed";
 import {
   dayParts,
@@ -48,6 +49,12 @@ const FLOW = [
   },
 ];
 
+/**
+ * Staged entrance for the hero: the badge, headline, copy and actions arrive in
+ * order rather than all at once. Driven from mount rather than from an
+ * intersection observer, so the page can never start blank if the observer is
+ * slow to report.
+ */
 function Reveal({
   children,
   delay = 0,
@@ -69,11 +76,12 @@ function Reveal({
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
+function Stat({ count, label }: { count?: number; label: string }) {
+  const shown = useCountUp(count);
   return (
     <div className="flex flex-col gap-1.5">
       <span className="font-display text-[28px] leading-none tabular-nums">
-        {value}
+        {count === undefined ? "—" : shown.toLocaleString("en-US")}
       </span>
       <span className="text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
         {label}
@@ -85,7 +93,7 @@ function Stat({ value, label }: { value: string; label: string }) {
 function NextEventCard({ event }: { event: EventListItem }) {
   const parts = dayParts(event.startTime);
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="surface-card rounded-lg border border-border bg-card shadow-hairline hover:border-foreground/15">
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <p className="label-eyebrow">Next available</p>
         <span className="text-[11px] tracking-[0.08em] text-muted-foreground uppercase">
@@ -172,7 +180,10 @@ function DemandRow({ event }: { event: EventListItem }) {
         </span>
       </div>
       <div className="mt-3 h-px w-full bg-border">
-        <div className="h-px bg-foreground/45" style={{ width: `${claimed}%` }} />
+        <div
+          className="h-px bg-foreground/45 transition-[width] duration-700 ease-quint"
+          style={{ width: `${claimed}%` }}
+        />
       </div>
     </div>
   );
@@ -202,7 +213,7 @@ export default function Landing() {
     )
     .slice(0, 3);
 
-  const number = (value: number) => value.toLocaleString("en-US");
+  const loaded = events !== undefined;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -263,26 +274,10 @@ export default function Landing() {
 
               <Reveal delay={0.26}>
                 <div className="mt-14 grid grid-cols-2 gap-8 border-t border-border pt-8 sm:grid-cols-4">
-                  <Stat
-                    value={
-                      programmes === undefined
-                        ? "—"
-                        : number(programmes.length)
-                    }
-                    label="Programmes"
-                  />
-                  <Stat
-                    value={events === undefined ? "—" : number(events.length)}
-                    label="Events"
-                  />
-                  <Stat
-                    value={events === undefined ? "—" : number(totalCapacity)}
-                    label="Places"
-                  />
-                  <Stat
-                    value={events === undefined ? "—" : number(totalBooked)}
-                    label="Booked"
-                  />
+                  <Stat count={programmes?.length} label="Programmes" />
+                  <Stat count={events?.length} label="Events" />
+                  <Stat count={loaded ? totalCapacity : undefined} label="Places" />
+                  <Stat count={loaded ? totalBooked : undefined} label="Booked" />
                 </div>
               </Reveal>
             </div>

@@ -757,7 +757,7 @@ function ConsoleEventRow({ event }: { event: ConsoleEvent }) {
       <div className="mt-4 flex items-center gap-3">
         <div className="h-px flex-1 bg-border">
           <div
-            className="h-px bg-foreground/45"
+            className="h-px bg-foreground/45 transition-[width] duration-700 ease-quint"
             style={{ width: `${claimed}%` }}
           />
         </div>
@@ -793,9 +793,9 @@ export default function Admin() {
 
   const tabClass = (value: "overview" | "programmes") =>
     cn(
-      "h-full rounded-full px-4 text-[13px] transition-colors",
+      "h-full rounded-full px-4 text-[13px] transition-[background-color,color,box-shadow] duration-200 ease-soft",
       tab === value
-        ? "bg-foreground text-background"
+        ? "bg-foreground text-background shadow-hairline"
         : "text-muted-foreground hover:text-foreground",
     );
 
@@ -897,7 +897,7 @@ export default function Admin() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="mt-10">
+            <TabsContent value="overview" className="animate-rise mt-10">
               <div className="grid gap-14 lg:grid-cols-[1.4fr_0.6fr] lg:gap-16">
                 <section>
                   <div className="flex items-baseline justify-between border-b border-border pb-3">
@@ -927,7 +927,7 @@ export default function Admin() {
                         return (
                           <li
                             key={row._id}
-                            className="flex flex-wrap items-center justify-between gap-4 border-b border-border py-4"
+                            className="row-marker relative flex flex-wrap items-center justify-between gap-4 border-b border-border py-4 pr-1 pl-1 transition-colors duration-300 ease-soft hover:bg-accent/40"
                           >
                             <div className="flex min-w-0 items-center gap-3.5">
                               <span className="grid size-8 shrink-0 place-items-center rounded-full border border-border text-[10px] font-medium">
@@ -1014,7 +1014,7 @@ export default function Admin() {
               </div>
             </TabsContent>
 
-            <TabsContent value="programmes" className="mt-10">
+            <TabsContent value="programmes" className="animate-rise mt-10">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <p className="label-eyebrow">Programmes you run</p>

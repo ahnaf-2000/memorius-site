@@ -1,5 +1,6 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
+import { PageTransition } from "@/components/site/PageTransition";
 import { RequireAuth } from "@/components/RequireAuth";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
@@ -98,6 +99,12 @@ function RouteSyncer() {
     );
   }, [location.pathname]);
 
+  // A new page starts at the top of itself, without the smooth-scroll
+  // animation the stylesheet turns on for in-page anchors.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [location.pathname]);
+
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (event.data?.type === "navigate") {
@@ -111,7 +118,52 @@ function RouteSyncer() {
 
   return null;
 }
+/**
+ * The routed tree. It reads the current path once and uses it as the key on the
+ * page transition, which is what makes a navigation replay the entrance motion
+ * instead of swapping content underneath the customer.
+ */
+function AppRoutes() {
+  const location = useLocation();
 
+  return (
+    <>
+      <RouteSyncer />
+      <Suspense fallback={<RouteLoading />}>
+        <PageTransition routeKey={location.pathname}>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/events/:slug" element={<EventDetail />} />
+            <Route path="/programmes" element={<Programmes />} />
+            <Route path="/programmes/:slug" element={<ProgrammeDetail />} />
+            <Route
+              path="/auth"
+              element={<AuthPage redirectAfterAuth="/dashboard" />}
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <RequireAuth>
+                  <Dashboard />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <RequireAuth>
+                  <Admin />
+                </RequireAuth>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </PageTransition>
+      </Suspense>
+    </>
+  );
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -121,37 +173,7 @@ createRoot(document.getElementById("root")!).render(
       </ToolbarErrorBoundary>
       <ConvexAuthProvider client={convex}>
         <BrowserRouter>
-          <RouteSyncer />
-          <Suspense fallback={<RouteLoading />}>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/events" element={<Events />} />
-              <Route path="/events/:slug" element={<EventDetail />} />
-              <Route path="/programmes" element={<Programmes />} />
-              <Route path="/programmes/:slug" element={<ProgrammeDetail />} />
-              <Route
-                path="/auth"
-                element={<AuthPage redirectAfterAuth="/dashboard" />}
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <RequireAuth>
-                    <Dashboard />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/admin"
-                element={
-                  <RequireAuth>
-                    <Admin />
-                  </RequireAuth>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+          <AppRoutes />
         </BrowserRouter>
         <Toaster />
       </ConvexAuthProvider>
