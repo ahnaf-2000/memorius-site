@@ -1,4 +1,5 @@
 import { EventDirectory } from "@/components/site/EventDirectory";
+import { EventSlideshow } from "@/components/site/EventSlideshow";
 import { StatusDot } from "@/components/site/EventList";
 import { ProgrammeCard } from "@/components/site/FestCard";
 import { SectionHeading } from "@/components/site/SectionHeading";
@@ -289,6 +290,39 @@ export default function Landing() {
                 <NextEventCard event={nextEvent} />
               )}
             </Reveal>
+          </div>
+        </section>
+
+        {/* What's on */}
+        <section id="whats-on" className="scroll-mt-24 border-t border-border">
+          <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
+            <SectionHeading
+              eyebrow="What's on"
+              title="Every event running now, without the searching."
+              description="Nothing to filter and nothing to type. Every event open for booking passes through here in turn — date, venue, price and the places still left."
+              action={
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="group h-9 gap-2 rounded-full px-4 text-[13px]"
+                >
+                  <Link to="/events">
+                    Open the full catalogue
+                    <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                </Button>
+              }
+            />
+            <div className="mt-10">
+              {events === undefined ? (
+                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+                  <Skeleton className="h-[30rem] rounded-lg" />
+                  <Skeleton className="hidden h-[30rem] rounded-lg lg:block" />
+                </div>
+              ) : (
+                <EventSlideshow events={upcoming} />
+              )}
+            </div>
           </div>
         </section>
 
