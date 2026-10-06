@@ -1,0 +1,17 @@
+{
+  "name": "Cadence",
+  "short_name": "Cadence",
+  "description": "Festivals, events and registrations in one calm place.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fdfdfb",
+  "theme_color": "#fdfdfb",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
