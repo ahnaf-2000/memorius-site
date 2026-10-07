@@ -86,6 +86,8 @@ export function Brand({
     <Link
       to={to}
       aria-label="Memorius — home"
+      // The secret knock counts taps on this mark; see SecretAdmin.
+      data-memo-brand=""
       className={cn(
         "inline-flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40",
         className,

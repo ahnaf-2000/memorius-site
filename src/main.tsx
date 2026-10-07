@@ -5,6 +5,7 @@ import { EasterEggs } from "@/components/site/EasterEggs";
 import { OpeningIntro } from "@/components/site/OpeningIntro";
 import { PageTransition } from "@/components/site/PageTransition";
 import { ScrollProgress } from "@/components/site/ScrollProgress";
+import { SecretAdmin } from "@/components/site/SecretAdmin";
 import { RequireAuth } from "@/components/RequireAuth";
 import { usePersonaSync } from "@/hooks/use-profile";
 import { api } from "@/convex/_generated/api";
@@ -264,6 +265,7 @@ createRoot(document.getElementById("root")!).render(
           <PricedRoutes />
           <AssistantDock />
           <OpeningIntro />
+          <SecretAdmin />
         </BrowserRouter>
         <ScrollProgress />
         <EasterEggs />
