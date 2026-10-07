@@ -84,21 +84,6 @@ const FLOW = [
   },
 ];
 
-const COMET_ICONS = [
-  Sparkles,
-  Star,
-  Ticket,
-  Handshake,
-  Globe,
-  ShoppingBag,
-  CalendarCheck,
-  TrendingUp,
-  GaugeCircle,
-  Building2,
-  Layers3,
-  ArrowRight,
-];
-
 const COMET_DISPLAY_NAMES = [
   "Sparkles",
   "Star",
@@ -176,12 +161,7 @@ const FAQ = [
   },
 ];
 
-/**
- * Staged entrance for the hero: the badge, headline, copy and actions arrive in
- * order rather than all at once. Driven from mount rather than from an
- * intersection observer, so the page can never start blank if the observer is
- * slow to report.
- */
+/** Staged entrance for the hero: the badge, headline, copy and actions arrive in order. */
 function Reveal({
   children,
   delay = 0,
@@ -191,9 +171,6 @@ function Reveal({
   delay?: number;
   className?: string;
 }) {
-  // When the opening sequence is about to play, the hero holds its own entrance
-  // until the panels have parted — otherwise it would arrive behind a curtain
-  // and the first thing anyone sees would already be finished.
   const [offset] = useState(() =>
     introPlays() ? INTRO_PART_MS / 1000 - 0.2 : 0,
   );
@@ -209,11 +186,7 @@ function Reveal({
   );
 }
 
-/**
- * Scroll-entrance for the grids further down the page: each card rises the
- * first time it is scrolled to, and siblings arrive on a small stagger so a
- * row reads as one wave rather than one block.
- */
+/** Scroll-entrance for the grids further down the page. */
 function Rise({
   children,
   delay = 0,
@@ -236,10 +209,7 @@ function Rise({
   );
 }
 
-/**
- * A gentle pointer tilt for the hero card: the card leans a few degrees
- * toward the cursor and springs back when it leaves.
- */
+/** A gentle pointer tilt for the hero card. */
 function Tilt({ children }: { children: ReactNode }) {
   const reduced = useReducedMotion();
   const rx = useMotionValue(0);
@@ -315,10 +285,7 @@ function Swash({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * A small claim that drifts beside the hero card: it fades in late, then
- * floats on its own slow clock. Hidden below lg, where there is no room.
- */
+/** A small claim that drifts beside the hero card. */
 function FloatChip(props: {
   className: string;
   delay: number;
@@ -330,7 +297,8 @@ function FloatChip(props: {
       aria-hidden="true"
       className={cn(
         "absolute z-10 hidden items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] text-muted-foreground shadow-lift backdrop-blur-sm lg:flex",
-        props.className              ,          )}}
+        props.className,
+      )}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={
         reduced
@@ -355,11 +323,7 @@ function FloatChip(props: {
   );
 }
 
-/**
- * A strip of words that never stops moving — the live categories when there
- * are events to name, otherwise the standing invitation. It holds the list
- * twice so the slide loops without a seam, and pauses for the pointer.
- */
+/** Marquee of words that never stops moving. */
 function Marquee({ words }: { words: string[] }) {
   const doubled = [...words, ...words];
   return (
@@ -429,7 +393,7 @@ function NextEventCard({ event }: { event: EventListItem }) {
               <dt className="shrink-0 text-muted-foreground">{label}</dt>
               <dd className="truncate text-right">{value}</dd>
             </div>
-          )}
+          ))}
           <div className="flex items-baseline justify-between gap-6">
             <dt className="shrink-0 text-muted-foreground">Availability</dt>
             <dd className="flex items-center gap-2">
@@ -490,6 +454,7 @@ function FeatureCard({
   const reduced = useReducedMotion();
   return (
     <motion.div
+      key={feature.title}
       initial={reduced ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.98 }}
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: "-60px" }}
@@ -529,8 +494,9 @@ function FeatureDetail({
   return (
     <div
       className={cn(
-        "rounded-xl border border-brand-line/40 bg-brand-soft/20 px-5 py-5",
-        strip ? "mt-12" : "mt-12"              ,          )}}
+        "rounded-xl border border-brand-line/40 bg-brand-soft/20 px-5 py-5 mt-12",
+        strip ? "mt-12" : "mt-12",
+      )}
     >
       <AnimatePresence mode="wait">
         <motion.div
@@ -565,34 +531,21 @@ function FeatureDetail({
           reduced && "opacity-0",
         )}
       >
-        <div className="absolute inset-0 flex items-center justify-center gap-6 py-1.5">                {Array.from({ length: 12 }).map(
-            (_, i) => (
-              <motion.section
-                key={String(i)}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: i * 0.04 }}
-                className="flex items-center gap-2 text-[11px] text-brand"
-              >
-                <span className="rounded-full bg-brand/20 px-2 py-0.5 text-[9px] tracking-wider uppercase">
-                  {FEATURES[i % FEATURES.length].title.split(" ")[0]}
-                </span>
-              </motion.section>
-            )}}
+        <div className="absolute inset-0 flex items-center justify-center gap-6 py-1.5">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <motion.section
+              key={String(i)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: i * 0.04 }}
+              className="flex items-center gap-2 text-[11px] text-brand"
+            >
+              <span className="rounded-full bg-brand/20 px-2 py-0.5 text-[9px] tracking-wider uppercase">
+                {FEATURES[i % FEATURES.length].title.split(" ")[0]}
+              </span>
+            </motion.section>
+          ))}
         </div>
-        <motion.div
-          animate={reduced ? undefined : { x: [0, 100] }}
-          transition={{
-            x: {
-              repeat: Infinity,
-              repeatType: "loop",
-              duration: 24,
-              ease: "linear",
-            },
-          }}
-          className="absolute inset-y-0 left-0 w-[200%] bg-gradient-to-r from-transparent via-brand-soft/40 to-transparent"
-        />
-      </div>
         <motion.div
           animate={reduced ? undefined : { x: [0, 100] }}
           transition={{
@@ -610,8 +563,7 @@ function FeatureDetail({
   );
 }
 
-function CometStream(
-{
+function CometStream({
   chipIcon,
   reduced,
   key,
@@ -662,8 +614,13 @@ export default function Landing() {
 
   const loaded = events !== undefined;
 
-  // The secret intro sequence plays its part reveal before the hero appears.
-  const introRevealId = introPlays() ? INTRO_PART_MS : undefined;
+  const reduced = useReducedMotion() ?? false;
+  const cometIcon: ReactNode = reduced
+    ? <Sparkles className={"size-7 text-brand opacity-70"} />
+    : <Sparkles className={"size-7 text-brand"} />;
+
+  const cometKey = reduced ? "Sparkles" : COMET_DISPLAY_NAMES[0];
+
   const marqueeWords = Array.from(
     new Set([
       "Conferences",
@@ -675,16 +632,8 @@ export default function Landing() {
       "Pay your way",
       "Sponsor a season",
     ]),
-  ) as string[];
+  );
 
-  const reduced = useReducedMotion() ?? false;
-  const cometIconBase: ReactNode = reduced
-    ? <Sparkles className={"size-7 text-brand opacity-70"} />
-    : <Sparkles className={"size-7 text-brand"} />;
-
-  const cometKey = cometKeyFromReveal();
-  // Frame the comet as a small dot.
-  const cometIcon: ReactNode = cometIconBase;
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
@@ -838,37 +787,37 @@ export default function Landing() {
                 },
               ].map((role, index) => (
                 <Rise key={role.title} delay={index * 0.08} className="h-full">
-                <div className="group surface-card flex h-full flex-col justify-between rounded-lg border border-border bg-card p-6 shadow-hairline hover:border-foreground/15">
-                  <div>
-                    <span
-                      className={cn(
-                        "icon-chip transition-transform duration-500 ease-quint group-hover:-rotate-6 group-hover:scale-110",
-                        role.tint,
-                      )}
+                  <div className="group surface-card flex h-full flex-col justify-between rounded-lg border border-border bg-card p-6 shadow-hairline hover:border-foreground/15">
+                    <div>
+                      <span
+                        className={cn(
+                          "icon-chip transition-transform duration-500 ease-quint group-hover:-rotate-6 group-hover:scale-110",
+                          role.tint,
+                        )}
+                      >
+                        <role.icon className="size-4" />
+                      </span>
+                      <h3 className="mt-5 text-[17px] font-medium tracking-[-0.02em]">
+                        {role.title}
+                      </h3>
+                      <p className="mt-3 text-[13px] leading-6 text-muted-foreground">
+                        {role.copy}
+                      </p>
+                    </div>
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="mt-7 h-9 w-fit gap-1.5 rounded-full border-border px-4 text-[13px] shadow-none"
                     >
-                      <role.icon className="size-4" />
-                    </span>
-                    <h3 className="mt-5 text-[17px] font-medium tracking-[-0.02em]">
-                      {role.title}
-                    </h3>
-                    <p className="mt-3 text-[13px] leading-6 text-muted-foreground">
-                      {role.copy}
-                    </p>
+                      <Link to={role.to}>
+                        {role.cta}
+                        <ArrowRight className="size-3.5" />
+                      </Link>
+                    </Button>
                   </div>
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="mt-7 h-9 w-fit gap-1.5 rounded-full border-border px-4 text-[13px] shadow-none"
-                  >
-                    <Link to={role.to}>
-                      {role.cta}
-                      <ArrowRight className="size-3.5" />
-                    </Link>
-                  </Button>
-                </div>
                 </Rise>
-              )}
+              ))}
             </div>
           </div>
         </section>
@@ -965,7 +914,7 @@ export default function Landing() {
                       key={programme._id}
                       programme={programme}
                     />
-                  )}
+                  ))}
             </div>
           </div>
         </section>
@@ -982,18 +931,18 @@ export default function Landing() {
               {FLOW.map((step, index) => (
                 <Rise key={step.index} delay={index * 0.06}>
                   <div className="bg-background px-0 pt-8 sm:px-7 sm:pt-10 sm:first:pl-0 sm:last:pr-0">
-                  <span className="font-display text-[15px] text-brand tabular-nums">
-                    {step.index}
-                  </span>
-                  <h3 className="mt-5 text-[17px] font-medium tracking-[-0.02em]">
-                    {step.title}
-                  </h3>
-                  <p className="mt-3 max-w-xs text-[13px] leading-6 text-muted-foreground">
-                    {step.copy}
-                  </p>
-                </div>
+                    <span className="font-display text-[15px] text-brand tabular-nums">
+                      {step.index}
+                    </span>
+                    <h3 className="mt-5 text-[17px] font-medium tracking-[-0.02em]">
+                      {step.title}
+                    </h3>
+                    <p className="mt-3 max-w-xs text-[13px] leading-6 text-muted-foreground">
+                      {step.copy}
+                    </p>
+                  </div>
                 </Rise>
-              )}
+              ))}
             </div>
           </div>
         </section>
@@ -1044,7 +993,7 @@ export default function Landing() {
                         </p>
                       </div>
                     </li>
-                  )}
+                  ))}
                 </ul>
 
                 <Button
@@ -1105,13 +1054,14 @@ export default function Landing() {
               eyebrow="Everything included"
               title="The parts other platforms charge extra for, already in."
               description="Selling, sponsorship, feedback, payments and a price that knows where the customer is — all inside the same calendar."
-            />
-
-            <div className="mt-12 grid gap-5 md:grid-cols-2">              {FEATURES.map((feature, index) => (
-                <FeatureCard key={feature.title} feature={feature} index={index} />
-              )}
-
-
+            />            <div className="mt-12 grid gap-5 md:grid-cols-2">
+              {FEATURES.map((feature, index) => (
+                <FeatureCard
+                  key={feature.title}
+                  feature={feature}
+                  index={index}
+                />
+              ))}
             </div>
 
             <div className="mt-12 flex flex-wrap items-center gap-3 rounded-xl border border-brand-line/40 bg-brand-soft/20 px-5 py-5">
@@ -1143,7 +1093,7 @@ export default function Landing() {
                     {item.a}
                   </AccordionContent>
                 </AccordionItem>
-              )}
+              ))}
             </Accordion>
           </div>
         </section>
