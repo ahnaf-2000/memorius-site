@@ -56,14 +56,46 @@ export function countryByCode(code: string): CountryOption {
 /* ------------------------------------------------------------------ store */
 
 const STORAGE_KEY = "memorius.country";
+/**
+ * Where the visitor was last placed by something other than their own choice —
+ * their account, or the country their IP address resolves to. Kept apart from
+ * the explicit choice so travelling, or picking up a new device, can move the
+ * default without ever overwriting a decision somebody made in the menu.
+ */
+const DETECTED_KEY = "memorius.country.detected";
 const listeners = new Set<() => void>();
+
+/**
+ * Whether a code is one of the markets the product quotes in. A type predicate
+ * rather than a plain boolean, so a stored or detected code narrows to a real
+ * market at the call site instead of staying `string | null`.
+ */
+export function isKnownCountry(code: string | null): code is string {
+  return code !== null && COUNTRIES.some((country) => country.code === code);
+}
+
+function readStored(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** Whether the visitor has picked a market themselves, in this browser. */
+export function hasChosenCountry(): boolean {
+  if (typeof window === "undefined") return false;
+  return isKnownCountry(readStored(STORAGE_KEY));
+}
 
 let activeCode = (() => {
   if (typeof window === "undefined") return DEFAULT_COUNTRY;
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  return stored !== null && COUNTRIES.some((c) => c.code === stored)
-    ? stored
-    : DEFAULT_COUNTRY;
+  const chosen = readStored(STORAGE_KEY);
+  if (isKnownCountry(chosen)) return chosen;
+  // A remembered guess paints correctly on the first frame, with no re-quote
+  // waiting on a network round trip.
+  const detected = readStored(DETECTED_KEY);
+  return isKnownCountry(detected) ? detected : DEFAULT_COUNTRY;
 })();
 
 function emit() {
@@ -71,13 +103,33 @@ function emit() {
 }
 
 export function setActiveCountry(code: string) {
-  if (!COUNTRIES.some((country) => country.code === code)) return;
+  if (!isKnownCountry(code)) return;
   activeCode = code;
   try {
     window.localStorage.setItem(STORAGE_KEY, code);
   } catch {
     // A blocked storage quota must never stop the switch from applying.
   }
+  emit();
+}
+
+/**
+ * Place the visitor in a market that was worked out for them — from their
+ * account, or from the country their IP address points to.
+ *
+ * Deliberately weaker than setActiveCountry: it refuses to touch a market
+ * somebody chose themselves, and it is remembered under its own key, so a
+ * choice and a guess can never be mistaken for one another.
+ */
+export function applyDetectedCountry(code: string) {
+  if (!isKnownCountry(code) || hasChosenCountry()) return;
+  try {
+    window.localStorage.setItem(DETECTED_KEY, code);
+  } catch {
+    // Storage blocked: the switch below still applies for this visit.
+  }
+  if (code === activeCode) return;
+  activeCode = code;
   emit();
 }
 

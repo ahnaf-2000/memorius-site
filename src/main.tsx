@@ -7,11 +7,26 @@ import { PageTransition } from "@/components/site/PageTransition";
 import { ScrollProgress } from "@/components/site/ScrollProgress";
 import { RequireAuth } from "@/components/RequireAuth";
 import { usePersonaSync } from "@/hooks/use-profile";
-import { useActiveCountry } from "@/lib/pricing";
+import { api } from "@/convex/_generated/api";
+import { detectCountry } from "@/lib/geo";
+import {
+  applyDetectedCountry,
+  hasChosenCountry,
+  isKnownCountry,
+  useActiveCountry,
+} from "@/lib/pricing";
+import type { ProfileView } from "@/lib/types";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
-import { ConvexReactClient } from "convex/react";
-import React, { Fragment, StrictMode, useEffect, lazy, Suspense } from "react";
+import { ConvexReactClient, useQuery } from "convex/react";
+import React, {
+  Fragment,
+  StrictMode,
+  useEffect,
+  useRef,
+  lazy,
+  Suspense,
+} from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
@@ -180,6 +195,44 @@ function PersonaSync() {
 }
 
 /**
+ * Quotes prices in the visitor's own market the first time they arrive.
+ *
+ * The order of preference is the whole point of it: a market chosen in this
+ * browser wins outright, then the one saved on their account, and only then the
+ * country their IP address points to. It resolves behind the opening sequence,
+ * so nobody watches the page re-quote, and every failure simply leaves the
+ * default market alone.
+ */
+function GeoDefaults() {
+  const profile = useQuery(api.profiles.me) as ProfileView | null | undefined;
+  const settled = useRef(false);
+
+  useEffect(() => {
+    if (settled.current || hasChosenCountry()) return;
+    // Wait for the account, so a saved market is never beaten by a guess.
+    if (profile === undefined) return;
+    settled.current = true;
+
+    const saved = profile?.country ?? null;
+    if (isKnownCountry(saved)) {
+      applyDetectedCountry(saved);
+      return;
+    }
+
+    // No saved preference to honour: ask the IP, quietly, and let it go.
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 2500);
+    void detectCountry(controller.signal)
+      .then((code) => {
+        if (code !== null) applyDetectedCountry(code);
+      })
+      .finally(() => window.clearTimeout(timer));
+  }, [profile]);
+
+  return null;
+}
+
+/**
  * The market decides what every price on the page says, so switching it
  * re-mounts the routed pages. The assistant sits outside this boundary, which
  * means a conversation survives a change of country.
@@ -202,6 +255,7 @@ createRoot(document.getElementById("root")!).render(
       <ConvexAuthProvider client={convex}>
         <BrowserRouter>
           <PersonaSync />
+          <GeoDefaults />
           <PricedRoutes />
           <AssistantDock />
           <OpeningIntro />

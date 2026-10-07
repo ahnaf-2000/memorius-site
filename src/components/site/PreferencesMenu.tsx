@@ -169,8 +169,9 @@ export function PreferencesMenu() {
           ))}
         </div>
         <p className="px-2.5 pt-2 text-[11px] leading-5 text-muted-foreground">
-          Amounts are converted from the programme's own currency at an
-          indicative rate.
+          We start with the market your location points to. Choose one above and
+          it is kept — amounts are converted from the programme's own currency
+          at an indicative rate.
         </p>
       </DropdownMenuContent>
     </DropdownMenu>
