@@ -4,10 +4,12 @@ import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 
+// Phase dots use the same status tokens as availability, so the colour-blind
+// palette reaches them too.
 const PHASE: Record<ProgrammePhase, { label: string; dot: string }> = {
-  upcoming: { label: "Upcoming", dot: "bg-stone-300" },
-  live: { label: "Running now", dot: "bg-emerald-600" },
-  past: { label: "Archive", dot: "bg-stone-300" },
+  upcoming: { label: "Upcoming", dot: "tone-muted" },
+  live: { label: "Running now", dot: "tone-open" },
+  past: { label: "Archive", dot: "tone-muted" },
 };
 
 export function ProgrammePhaseTag({ phase }: { phase: ProgrammePhase }) {

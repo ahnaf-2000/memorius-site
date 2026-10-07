@@ -283,7 +283,7 @@ function BookingPanel({
           className="border-t border-border px-6 py-6"
         >
           <div className="flex items-center gap-2.5">
-            <BadgeCheck className="size-4 text-emerald-600" />
+            <BadgeCheck className="text-tone-open size-4" />
             <p className="text-[14px] font-medium tracking-[-0.012em]">
               {activeBooking?.status === "waitlisted"
                 ? "On the waiting list"

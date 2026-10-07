@@ -107,7 +107,7 @@ export const overview = query({
           .reduce((sum, row) => sum + row.amountPaid, 0);
         const rowTicketDue = eventBookings
           .filter((row) => row.paymentStatus === "due")
-          .reduce((sum, row) => sum + event.price, 0);
+          .reduce((sum) => sum + event.price, 0);
         const rowShopPaid = eventOrders
           .filter((row) => row.paymentStatus === "paid")
           .reduce((sum, row) => sum + row.amountPaid, 0);

@@ -373,6 +373,12 @@ html[data-palette="colour-blind"].dark {
   .text-tone-open {
     color: var(--status-open);
   }
+  .text-tone-few {
+    color: var(--status-few);
+  }
+  .text-tone-neutral {
+    color: var(--status-neutral);
+  }
 
   /* A small rounded label: categories, tiers, payment methods. */
   .chip {

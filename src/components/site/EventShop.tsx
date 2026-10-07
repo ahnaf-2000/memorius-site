@@ -338,7 +338,7 @@ export function EventShop({
       {receipt !== null && (
         <div className="animate-rise mt-5 rounded-lg border border-border bg-card px-5 py-5">
           <div className="flex items-center gap-2.5">
-            <BadgeCheck className="size-4 tone-open" />
+            <BadgeCheck className="size-4 text-tone-open" />
             <p className="text-[14px] font-medium tracking-[-0.012em]">
               Order recorded
             </p>

@@ -136,7 +136,7 @@ export const organized = query({
               collected: live.reduce((sum, row) => sum + row.amountPaid, 0),
               outstanding: live
                 .filter((row) => row.paymentStatus === "due")
-                .reduce((sum, row) => sum + event.price, 0),
+                .reduce((sum) => sum + event.price, 0),
             };
           }),
         );
