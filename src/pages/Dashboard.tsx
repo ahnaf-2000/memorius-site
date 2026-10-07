@@ -1,3 +1,4 @@
+import { PreferencesMenu } from "@/components/site/PreferencesMenu";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import {
@@ -23,15 +24,21 @@ import {
   formatMoney,
   formatTimeRange,
   initials,
+  paymentMethodLabel,
   paymentTone,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
+import { useProfile } from "@/hooks/use-profile";
+import type { Persona } from "@/lib/types";
 import {
   ArrowUpRight,
+  Building2,
   CalendarDays,
   CreditCard,
+  Handshake,
   LogOut,
+  Package,
   Ticket,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
@@ -65,9 +72,33 @@ const STATUS_LABEL: Record<BookingRow["status"], string> = {
 };
 
 const STATUS_TONE: Record<BookingRow["status"], string> = {
-  confirmed: "bg-emerald-600",
-  waitlisted: "bg-amber-500",
-  cancelled: "bg-stone-300",
+  confirmed: "tone-open",
+  waitlisted: "tone-few",
+  cancelled: "tone-muted",
+};
+
+const PERSONA_COPY: Record<
+  Persona,
+  { title: string; copy: string; cta: string; to: string }
+> = {
+  organizer: {
+    title: "You are set up as an organizer",
+    copy: "Publish programmes, add events, list merchandise and snacks, and watch every booking, order and pledge arrive on one revenue screen.",
+    cta: "Open the console",
+    to: "/admin",
+  },
+  participant: {
+    title: "You are set up as a participant",
+    copy: "Book places, add merchandise or snacks to your basket, and leave a review once you have been in the room.",
+    cta: "Browse the catalogue",
+    to: "/events",
+  },
+  sponsor: {
+    title: "You are set up as a sponsor",
+    copy: "Back a programme or a single event in one of four tiers. Every pledge you make appears below and in the organizer console.",
+    cta: "Find a programme to back",
+    to: "/programmes",
+  },
 };
 
 function Dot({ className }: { className: string }) {
@@ -234,6 +265,18 @@ export default function Dashboard() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const bookings = useQuery(api.registrations.mine);
+  const { persona } = useProfile();
+  const sponsorships = useQuery(api.sponsorships.mine);
+  const orders = useQuery(api.shop.mine);
+  const role = PERSONA_COPY[persona];
+  const roleIcon =
+    persona === "organizer" ? (
+      <Building2 className="size-4" />
+    ) : persona === "sponsor" ? (
+      <Handshake className="size-4" />
+    ) : (
+      <Ticket className="size-4" />
+    );
 
   const rows: BookingRow[] = bookings ?? [];
   const upcoming = rows.filter(
@@ -265,6 +308,9 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <span className="chip chip-tinted hidden capitalize sm:inline-flex">
+                {persona}
+              </span>
               <span className="hidden items-center gap-2.5 rounded-full border border-border py-1.5 pr-4 pl-1.5 sm:flex">
                 <span className="grid size-7 place-items-center rounded-full bg-foreground text-[10px] font-medium text-background">
                   {initials(user?.name ?? user?.email ?? "")}
@@ -302,6 +348,46 @@ export default function Dashboard() {
               label="Places held"
             />
           </div>
+
+          <section className="mt-10 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+            <div className="rounded-lg border border-border card-soft p-5">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <span className="icon-chip shrink-0">{roleIcon}</span>
+                  <div>
+                    <p className="text-[14px] font-medium tracking-[-0.012em]">
+                      {role.title}
+                    </p>
+                    <p className="mt-1.5 max-w-lg text-[12.5px] leading-6 text-muted-foreground">
+                      {role.copy}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 rounded-full border-border px-4 text-[13px] shadow-none"
+                >
+                  <Link to={role.to}>
+                    {role.cta}
+                    <ArrowUpRight className="size-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border bg-card p-5">
+              <p className="label-eyebrow">Prices and appearance</p>
+              <p className="mt-3 text-[12.5px] leading-6 text-muted-foreground">
+                Every amount on the site is quoted in your market, and the
+                appearance you choose follows you here.
+              </p>
+              <div className="mt-4">
+                <PreferencesMenu />
+              </div>
+            </div>
+          </section>
 
           <section className="mt-12">
             <div className="flex items-baseline justify-between border-b border-border pb-3">
@@ -359,6 +445,114 @@ export default function Dashboard() {
               {settled.map((row) => (
                 <BookingCard key={row._id} booking={row} />
               ))}
+            </section>
+          )}
+          {sponsorships !== undefined && sponsorships.length > 0 && (
+            <section className="mt-16">
+              <div className="flex items-baseline justify-between border-b border-border pb-3">
+                <p className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
+                  Sponsorships you have pledged
+                </p>
+                <span className="text-[11px] text-muted-foreground tabular-nums">
+                  {sponsorships.length}
+                </span>
+              </div>
+              <ul>
+                {sponsorships.map((row) => (
+                  <li
+                    key={row._id}
+                    className="row-marker relative flex flex-wrap items-center justify-between gap-3 border-b border-border py-4 pl-1 transition-colors hover:bg-accent/40"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-medium tracking-[-0.012em]">
+                        {row.company}
+                      </p>
+                      <p className="mt-1 text-[12px] text-muted-foreground">
+                        {row.programmeName}
+                        {row.eventTitle !== null && (
+                          <>
+                            <span className="px-1.5 text-border">·</span>
+                            {row.eventTitle}
+                          </>
+                        )}
+                        <span className="px-1.5 text-border">·</span>
+                        {paymentMethodLabel(row.paymentMethod)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={cn(
+                          "chip",
+                          row.status === "paid"
+                            ? "chip-tinted"
+                            : row.status === "confirmed"
+                              ? "chip-cool"
+                              : "chip-warm",
+                        )}
+                      >
+                        {row.status === "paid"
+                          ? "Paid"
+                          : row.status === "confirmed"
+                            ? "Confirmed"
+                            : "Pledged"}
+                      </span>
+                      <span className="font-display text-[16px] tabular-nums">
+                        {formatMoney(row.amount)}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {orders !== undefined && orders.length > 0 && (
+            <section className="mt-16">
+              <div className="flex items-baseline justify-between border-b border-border pb-3">
+                <p className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
+                  Merchandise and snacks you ordered
+                </p>
+                <span className="text-[11px] text-muted-foreground tabular-nums">
+                  {orders.length}
+                </span>
+              </div>
+              <ul>
+                {orders.map((order) => (
+                  <li
+                    key={order._id}
+                    className="row-marker relative flex flex-wrap items-start justify-between gap-4 border-b border-border py-4 pl-1 transition-colors hover:bg-accent/40"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2.5">
+                        <Package className="size-3.5 shrink-0 text-muted-foreground" />
+                        <Link
+                          to={`/events/${order.eventSlug}`}
+                          className="link-quiet text-[14px] font-medium tracking-[-0.012em]"
+                        >
+                          {order.eventTitle}
+                        </Link>
+                      </div>
+                      <p className="mt-2 text-[12px] text-muted-foreground">
+                        {order.items
+                          .map((line) => `${line.quantity} × ${line.name}`)
+                          .join(", ")}
+                      </p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {order.reference}
+                        <span className="px-1.5 text-border">·</span>
+                        {paymentMethodLabel(order.paymentMethod)}
+                        <span className="px-1.5 text-border">·</span>
+                        {order.paymentStatus === "paid"
+                          ? "Settled"
+                          : "Pay on collection"}
+                      </p>
+                    </div>
+                    <span className="font-display text-[16px] tabular-nums">
+                      {formatMoney(order.subtotal)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
         </div>

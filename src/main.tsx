@@ -1,11 +1,15 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
+import { AssistantDock } from "@/components/site/AssistantDock";
+import { OpeningIntro } from "@/components/site/OpeningIntro";
 import { PageTransition } from "@/components/site/PageTransition";
 import { RequireAuth } from "@/components/RequireAuth";
+import { usePersonaSync } from "@/hooks/use-profile";
+import { useActiveCountry } from "@/lib/pricing";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
-import React, { StrictMode, useEffect, lazy, Suspense } from "react";
+import React, { Fragment, StrictMode, useEffect, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
@@ -165,6 +169,26 @@ function AppRoutes() {
   );
 }
 
+/** Writes the role chosen before sign-in onto a fresh account, once. */
+function PersonaSync() {
+  usePersonaSync();
+  return null;
+}
+
+/**
+ * The market decides what every price on the page says, so switching it
+ * re-mounts the routed pages. The assistant sits outside this boundary, which
+ * means a conversation survives a change of country.
+ */
+function PricedRoutes() {
+  const country = useActiveCountry();
+  return (
+    <Fragment key={country.code}>
+      <AppRoutes />
+    </Fragment>
+  );
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <RootErrorBoundary>
@@ -173,7 +197,10 @@ createRoot(document.getElementById("root")!).render(
       </ToolbarErrorBoundary>
       <ConvexAuthProvider client={convex}>
         <BrowserRouter>
-          <AppRoutes />
+          <PersonaSync />
+          <PricedRoutes />
+          <AssistantDock />
+          <OpeningIntro />
         </BrowserRouter>
         <Toaster />
       </ConvexAuthProvider>

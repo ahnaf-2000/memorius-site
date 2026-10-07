@@ -4,44 +4,69 @@ import {
   isSameMonth,
   isSameYear,
 } from "date-fns";
+import { BASE_CURRENCY, formatLocalPrice } from "./pricing";
 import type {
   BookingView,
   EventView,
+  PaymentMethod,
   PaymentStatus,
   SeatState,
 } from "./types";
 
-/** Prices are held in minor units and shown in one currency across the product. */
-export const CURRENCY = "USD";
+/**
+ * Prices are held in minor units of the base currency and quoted in the
+ * visitor's own market, which is why every amount goes through this one call.
+ */
+export const CURRENCY = BASE_CURRENCY;
 
 export function formatMoney(minorUnits: number) {
-  const whole = minorUnits % 100 === 0;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: CURRENCY,
-    minimumFractionDigits: whole ? 0 : 2,
-    maximumFractionDigits: whole ? 0 : 2,
-  }).format(minorUnits / 100);
+  return formatLocalPrice(minorUnits);
 }
+
+const METHOD_LABEL: Record<PaymentMethod, string> = {
+  card: "Card",
+  "on-site": "On site",
+  bkash: "bKash",
+  nagad: "Nagad",
+  "google-pay": "Google Pay",
+  paypal: "PayPal",
+};
+
+export function paymentMethodLabel(method: PaymentMethod) {
+  return METHOD_LABEL[method];
+}
+
+/** The methods a customer can choose at checkout, in the order we show them. */
+export const PAYMENT_METHODS: PaymentMethod[] = [
+  "bkash",
+  "nagad",
+  "google-pay",
+  "paypal",
+  "card",
+  "on-site",
+];
 
 /** "No charge" reads better than "$0" on a public page. */
 export function priceLabel(minorUnits: number) {
   return minorUnits === 0 ? "No charge" : formatMoney(minorUnits);
 }
 
-/** The one colour allowed to interrupt the monochrome palette: a status dot. */
+/**
+ * Status colours are tokens, not fixed hues, so the colour-blind palette can
+ * swap green for blue without touching a single component.
+ */
 export const seatTone: Record<SeatState, string> = {
-  open: "bg-emerald-600",
-  few: "bg-amber-500",
-  full: "bg-stone-400",
-  closed: "bg-stone-400",
-  past: "bg-stone-300",
+  open: "tone-open",
+  few: "tone-few",
+  full: "tone-neutral",
+  closed: "tone-neutral",
+  past: "tone-muted",
 };
 
 export const paymentTone: Record<PaymentStatus, string> = {
-  paid: "bg-emerald-600",
-  due: "bg-amber-500",
-  waived: "bg-stone-300",
+  paid: "tone-open",
+  due: "tone-few",
+  waived: "tone-muted",
 };
 
 export function dayParts(ts: number) {

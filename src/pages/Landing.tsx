@@ -1,10 +1,17 @@
 import { EventDirectory } from "@/components/site/EventDirectory";
 import { EventSlideshow } from "@/components/site/EventSlideshow";
+import { PAYMENT_OPTIONS } from "@/components/site/PaymentMethods";
 import { StatusDot } from "@/components/site/EventList";
 import { ProgrammeCard } from "@/components/site/FestCard";
 import { SectionHeading } from "@/components/site/SectionHeading";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,7 +28,21 @@ import {
 import type { EventListItem, ProgrammeListItem } from "@/lib/types";
 import { useQuery } from "convex/react";
 import { motion } from "framer-motion";
-import { ArrowRight, CalendarCheck, GaugeCircle, Layers3 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  ArrowRight,
+  Building2,
+  CalendarCheck,
+  GaugeCircle,
+  Globe,
+  Handshake,
+  Layers3,
+  ShoppingBag,
+  Sparkles,
+  Star,
+  Ticket,
+  TrendingUp,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
@@ -47,6 +68,68 @@ const FLOW = [
     index: "04",
     title: "Booking",
     copy: "A held place, a payment record, and a line on your own schedule.",
+  },
+];
+
+const FEATURES = [
+  {
+    icon: ShoppingBag,
+    title: "Merchandise and snacks",
+    copy: "List a tote, a pin or the coffee cart on the event itself. Attendees build a basket and collect at the desk.",
+    tint: "icon-chip-warm",
+  },
+  {
+    icon: Handshake,
+    title: "Sponsorship in four tiers",
+    copy: "Community, Silver, Gold and Lead partner. Pledges arrive against the programme or one event, ready to confirm.",
+    tint: "icon-chip-plum",
+  },
+  {
+    icon: Star,
+    title: "Ratings and reviews",
+    copy: "One rating per attendee, averaged onto the event card, so the next customer reads what the room said.",
+    tint: "",
+  },
+  {
+    icon: TrendingUp,
+    title: "Revenue on one screen",
+    copy: "Places, shop orders and sponsorship in a single ledger, split into collected, promised and still due.",
+    tint: "icon-chip-cool",
+  },
+  {
+    icon: Globe,
+    title: "Prices in your market",
+    copy: "Quote in BDT, USD, GBP or anywhere else. The figure follows the visitor's country, and can be changed any time.",
+    tint: "icon-chip-cool",
+  },
+  {
+    icon: Sparkles,
+    title: "An assistant, always on",
+    copy: "Memo answers from the live catalogue — dates, prices, places left, how to pay — from any page, day or night.",
+    tint: "icon-chip-warm",
+  },
+];
+
+const FAQ = [
+  {
+    q: "How do payments work, and where does the money go?",
+    a: "Checkout accepts bKash, Nagad, Google Pay, PayPal, card, or settling at the desk. Every payment is recorded against a reference and appears in the organizer's revenue screen, which is also where they set where payouts should land.",
+  },
+  {
+    q: "Can prices be shown in my own currency?",
+    a: "Yes. Choose your country from the menu in the header and every amount on the site is requoted locally, from the Bangla taka to the US dollar. Signed-in accounts remember the choice.",
+  },
+  {
+    q: "What can an organizer actually sell?",
+    a: "Three things on the same event: places at the event, merchandise to take home, and snacks or drinks for the day. Sponsorship is sold at programme or event level, in four tiers.",
+  },
+  {
+    q: "Is there a dark theme? What about colour vision?",
+    a: "There is a dark appearance and a colour-blind palette, chosen separately so you can have either, or both. The palette swaps the red and green status colours for blue and orange, which stay distinguishable.",
+  },
+  {
+    q: "What happens when an event is full?",
+    a: "New bookings join the waiting list instead of being refused, and they are promoted automatically the moment a place is released — in the order they arrived, without anyone mailing a list.",
   },
 ];
 
@@ -222,15 +305,23 @@ export default function Landing() {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="mx-auto w-full max-w-6xl px-5 pt-20 pb-24 sm:px-8 sm:pt-28">
-          <div className="grid gap-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-20">
+        <section className="relative mx-auto w-full max-w-6xl px-5 pt-20 pb-24 sm:px-8 sm:pt-28">
+          <div
+            aria-hidden="true"
+            className="glow-soft pointer-events-none absolute inset-x-[-10%] -top-40 h-[38rem]"
+          />
+          <div
+            aria-hidden="true"
+            className="grid-veil pointer-events-none absolute inset-x-0 -top-40 h-[38rem]"
+          />
+          <div className="relative grid gap-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-20">
             <div>
               <Reveal>
                 <Badge
                   variant="outline"
                   className="rounded-full border-border px-3 py-1 text-[11px] font-normal tracking-[0.08em] text-muted-foreground uppercase"
                 >
-                  Booking for business events
+                  Events, merchandise, sponsorship — one place
                 </Badge>
               </Reveal>
 
@@ -290,6 +381,73 @@ export default function Landing() {
                 <NextEventCard event={nextEvent} />
               )}
             </Reveal>
+          </div>
+        </section>
+
+        {/* Three ways in */}
+        <section className="band-brand border-t border-border">
+          <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
+            <SectionHeading
+              eyebrow="Three ways in"
+              title="Organizer, participant or sponsor — pick yours at the door."
+              description="One account, three shapes. The role you choose decides what your dashboard opens on, and you can change it whenever the season does."
+            />
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              {[
+                {
+                  icon: Building2,
+                  title: "Organizer",
+                  copy: "Publish programmes and events, sell places, merchandise and snacks, take sponsorship, and watch the money arrive on one screen.",
+                  tint: "",
+                  to: "/auth?returnTo=%2Fadmin",
+                  cta: "Run a programme",
+                },
+                {
+                  icon: Ticket,
+                  title: "Participant",
+                  copy: "See everything that is on, take a place in a minute, add something from the shop, and leave a review afterwards.",
+                  tint: "icon-chip-cool",
+                  to: "/events",
+                  cta: "See what's on",
+                },
+                {
+                  icon: Handshake,
+                  title: "Sponsor",
+                  copy: "Back a programme or a single event in four tiers, from Community to Lead partner, and follow where it goes.",
+                  tint: "icon-chip-plum",
+                  to: "/programmes",
+                  cta: "Back an event",
+                },
+              ].map((role) => (
+                <div
+                  key={role.title}
+                  className="surface-card flex flex-col justify-between rounded-lg border border-border bg-card p-6 shadow-hairline hover:border-foreground/15"
+                >
+                  <div>
+                    <span className={cn("icon-chip", role.tint)}>
+                      <role.icon className="size-4" />
+                    </span>
+                    <h3 className="mt-5 text-[17px] font-medium tracking-[-0.02em]">
+                      {role.title}
+                    </h3>
+                    <p className="mt-3 text-[13px] leading-6 text-muted-foreground">
+                      {role.copy}
+                    </p>
+                  </div>
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="mt-7 h-9 w-fit gap-1.5 rounded-full border-border px-4 text-[13px] shadow-none"
+                  >
+                    <Link to={role.to}>
+                      {role.cta}
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -512,6 +670,63 @@ export default function Landing() {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Everything included */}
+        <section className="band-warm border-t border-border">
+          <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
+            <SectionHeading
+              eyebrow="Everything included"
+              title="The parts other platforms charge extra for, already in."
+              description="Selling, sponsorship, feedback, payments and a price that knows where the customer is — all inside the same calendar."
+            />
+            <div className="mt-10 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+              {FEATURES.map((feature) => (
+                <div key={feature.title} className="bg-card p-6">
+                  <span className={cn("icon-chip", feature.tint)}>
+                    <feature.icon className="size-4" />
+                  </span>
+                  <h3 className="mt-5 text-[15px] font-medium tracking-[-0.015em]">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-2.5 text-[12.5px] leading-6 text-muted-foreground">
+                    {feature.copy}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 flex flex-wrap items-center gap-2">
+              <span className="label-eyebrow mr-1">Pay with</span>
+              {PAYMENT_OPTIONS.map((option) => (
+                <span key={option.id} className={cn("chip", option.tint)}>
+                  {option.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Questions */}
+        <section className="border-t border-border">
+          <div className="mx-auto w-full max-w-3xl px-5 py-20 sm:px-8 sm:py-24">
+            <SectionHeading
+              eyebrow="Questions"
+              title="What people ask before their first booking."
+            />
+            <Accordion type="single" collapsible className="mt-8">
+              {FAQ.map((item, index) => (
+                <AccordionItem key={item.q} value={`q-${index}`}>
+                  <AccordionTrigger className="text-left text-[14px] font-medium tracking-[-0.012em]">
+                    {item.q}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-[13px] leading-6 text-muted-foreground">
+                    {item.a}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
           </div>
         </section>
 

@@ -11,7 +11,18 @@ import type { Id } from "@/convex/_generated/dataModel";
 export type SeatState = "open" | "few" | "full" | "closed" | "past";
 export type ProgrammePhase = "upcoming" | "live" | "past";
 export type PaymentStatus = "paid" | "due" | "waived";
-export type PaymentMethod = "card" | "on-site";
+export type PaymentMethod =
+  | "card"
+  | "on-site"
+  | "bkash"
+  | "nagad"
+  | "google-pay"
+  | "paypal";
+export type Persona = "organizer" | "participant" | "sponsor";
+export type ProductKind = "merchandise" | "snack";
+export type OrderStatus = "placed" | "ready" | "collected" | "cancelled";
+export type SponsorshipTier = "community" | "silver" | "gold" | "lead";
+export type SponsorshipStatus = "pledged" | "confirmed" | "paid";
 export type BookingStatus = "confirmed" | "waitlisted" | "cancelled";
 
 export interface EventView {
@@ -105,6 +116,143 @@ export interface BusinessBookingView extends GuestView {
   eventStart: number;
   price: number;
   programmeName: string;
+}
+
+export interface ProductView {
+  _id: Id<"products">;
+  name: string;
+  kind: ProductKind;
+  description: string | null;
+  price: number;
+  available: number;
+}
+
+/** What the organizer sees on the shelf, including what has sold out. */
+export interface ManagedProductView extends ProductView {
+  stock: number;
+  sold: number;
+  active: boolean;
+}
+
+export interface SponsorshipView {
+  _id: Id<"sponsorships">;
+  company: string;
+  tier: SponsorshipTier;
+  amount: number;
+  message: string | null;
+  status: SponsorshipStatus;
+  eventId: Id<"events"> | null;
+}
+
+/** A pledge as the business sees it, with who to contact about it. */
+export interface OrganizerSponsorshipView
+  extends Omit<SponsorshipView, "eventId"> {
+  contactName: string | null;
+  email: string | null;
+  paymentMethod: PaymentMethod;
+  createdAt: number;
+  programmeName: string;
+  eventTitle: string | null;
+}
+
+export interface SponsorshipTierOption {
+  id: SponsorshipTier;
+  name: string;
+  amount: number;
+  blurb: string;
+}
+
+export interface ReviewView {
+  _id: Id<"reviews">;
+  authorName: string;
+  authorCompany: string | null;
+  rating: number;
+  body: string;
+  createdAt: number;
+  fromAttendee: boolean;
+}
+
+export interface OrganizerReviewView
+  extends Omit<ReviewView, "fromAttendee"> {
+  eventTitle: string;
+  programmeName: string;
+}
+
+export interface OrderLine {
+  productId: Id<"products">;
+  name: string;
+  kind: ProductKind;
+  unitPrice: number;
+  quantity: number;
+}
+
+export interface OrderView {
+  _id: Id<"orders">;
+  reference: string;
+  subtotal: number;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  status: OrderStatus;
+  createdAt: number;
+  items: OrderLine[];
+  eventTitle: string;
+  eventSlug: string;
+  eventStart: number;
+}
+
+export interface ProfileView {
+  persona: Persona;
+  country: string;
+  currency: string;
+  payoutMethod: PaymentMethod | null;
+  payoutDetails: string | null;
+}
+
+export interface RevenueEventRow {
+  eventId: string;
+  title: string;
+  slug: string;
+  startTime: number;
+  programmeName: string;
+  tickets: number;
+  ticketPaid: number;
+  ticketDue: number;
+  shopPaid: number;
+  shopDue: number;
+  sponsors: number;
+  sponsorValue: number;
+  rating: number | null;
+  reviewCount: number;
+}
+
+export interface RevenueOverview {
+  programmes: number;
+  tickets: number;
+  ticketPaid: number;
+  ticketDue: number;
+  orders: number;
+  shopPaid: number;
+  shopDue: number;
+  sponsors: number;
+  sponsorPaid: number;
+  sponsorConfirmed: number;
+  sponsorPledged: number;
+  collected: number;
+  promised: number;
+  reviewCount: number;
+  rating: number | null;
+  payoutMethod: PaymentMethod | null;
+  payoutDetails: string | null;
+  markets: { country: string; orders: number; value: number }[];
+  events: RevenueEventRow[];
+}
+
+/** One turn in the assistant panel. */
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+  /** Model name when a key is configured, or a note about the fallback. */
+  meta?: string | null;
 }
 
 export interface CommentView {

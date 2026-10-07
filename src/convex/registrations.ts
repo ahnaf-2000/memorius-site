@@ -8,8 +8,12 @@ import {
   requireUserId,
   seatState,
 } from "./model";
+import { paymentMethodValidator as methodValidator } from "./schema";
 
-const methodValidator = v.union(v.literal("card"), v.literal("on-site"));
+/** Everything except settling at the desk is taken as settled on the spot. */
+function settlesImmediately(method: string) {
+  return method !== "on-site";
+}
 
 /**
  * Take a booking. When the room is full the booking is accepted as a waiting
@@ -48,8 +52,13 @@ export const book = mutation({
     if (!email.includes("@")) throw new Error("Please enter a valid email.");
 
     const price = event.price;
-    const method = price === 0 ? undefined : (args.paymentMethod ?? "on-site");
-    const paymentStatus = price === 0 ? "waived" : method === "card" ? "paid" : "due";
+    const method = price === 0 ? undefined : (args.paymentMethod ?? "bkash");
+    const paymentStatus =
+      price === 0
+        ? "waived"
+        : settlesImmediately(method ?? "bkash")
+          ? "paid"
+          : "due";
     const amountPaid = paymentStatus === "paid" ? price : 0;
     const status =
       event.seatsTaken >= event.capacity ? "waitlisted" : "confirmed";

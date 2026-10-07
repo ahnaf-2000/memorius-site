@@ -1,4 +1,8 @@
 import { Brand } from "@/components/site/Brand";
+import {
+  PreferencesMenu,
+  ThemeToggle,
+} from "@/components/site/PreferencesMenu";
 import { SearchPalette } from "@/components/site/SearchPalette";
 import { Button } from "@/components/ui/button";
 import {
@@ -88,6 +92,8 @@ export function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <PreferencesMenu />
           {isAuthenticated ? (
             <>
               <Button

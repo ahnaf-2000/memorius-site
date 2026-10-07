@@ -1,3 +1,4 @@
+import type { Id } from "./_generated/dataModel";
 import { mutation } from "./_generated/server";
 
 /**
@@ -5,7 +6,200 @@ import { mutation } from "./_generated/server";
  * behind by an earlier version — and only showcase data, never a programme a
  * business created itself.
  */
-const SHOWCASE_VERSION = 2;
+const SHOWCASE_VERSION = 3;
+
+/** What is on sale at every seeded event: merchandise to keep, snacks for the day. */
+const SHOP_STOCK = [
+  {
+    name: "Programme Tote Bag",
+    kind: "merchandise" as const,
+    description: "Heavyweight cotton, printed with the programme mark.",
+    price: 2400,
+    stock: 120,
+    sold: 34,
+  },
+  {
+    name: "Enamel Pin Set",
+    kind: "merchandise" as const,
+    description: "Three pins in a printed card sleeve.",
+    price: 1200,
+    stock: 200,
+    sold: 61,
+  },
+  {
+    name: "Notebook & Pen",
+    kind: "merchandise" as const,
+    description: "A5, dotted pages, hard cover, lies flat.",
+    price: 1800,
+    stock: 150,
+    sold: 47,
+  },
+  {
+    name: "Coffee & Pastry",
+    kind: "snack" as const,
+    description: "Served from 08:30 at the atrium counter.",
+    price: 850,
+    stock: 300,
+    sold: 128,
+  },
+  {
+    name: "Afternoon Snack Box",
+    kind: "snack" as const,
+    description: "Fruit, nuts and something sweet for the second session.",
+    price: 1100,
+    stock: 250,
+    sold: 74,
+  },
+] as const;
+
+/** A handful of attendee voices, so every event page opens with a rating. */
+const REVIEWS = [
+  {
+    author: "Priya Raman",
+    company: "Northwind Retail",
+    rating: 5,
+    body: "The most useful day I have spent this year. Every session ended with a decision written down rather than a slide deck.",
+    daysAgo: 96,
+  },
+  {
+    author: "Tom Achterberg",
+    company: "Vantage Freight",
+    rating: 4,
+    body: "Strong content and a genuinely well-run room. The afternoon ran slightly long, but the material held up.",
+    daysAgo: 74,
+  },
+  {
+    author: "Halima Yusuf",
+    company: "Arden Logistics",
+    rating: 5,
+    body: "Small enough to ask questions, senior enough that the answers mattered. I brought two colleagues the following week.",
+    daysAgo: 61,
+  },
+  {
+    author: "Daniel Okafor",
+    company: "Meridian Supply",
+    rating: 4,
+    body: "Practical, unhurried and free of sales pitches. The workbook alone was worth the place.",
+    daysAgo: 52,
+  },
+  {
+    author: "Sara Lindqvist",
+    company: "Beacon Foods",
+    rating: 5,
+    body: "I came for one session and stayed for the whole programme. The roundtable was off the record in the best sense.",
+    daysAgo: 40,
+  },
+  {
+    author: "Marcus Bell",
+    company: "Field & Co",
+    rating: 3,
+    body: "Good people, good venue. I would have liked more detail on the cost modelling section.",
+    daysAgo: 33,
+  },
+  {
+    author: "Yuki Tanaka",
+    company: "Kita Manufacturing",
+    rating: 5,
+    body: "Booking took a minute and the reference worked at the door without a single question. The content was equally reliable.",
+    daysAgo: 27,
+  },
+  {
+    author: "Elena Moretti",
+    company: "Corso Analytics",
+    rating: 4,
+    body: "A calm, well-organised event. The catered lunch and the coffee cart were a nice touch.",
+    daysAgo: 19,
+  },
+] as const;
+
+/** Backers per programme, at programme level, in the four published tiers. */
+const SPONSORS: Record<
+  string,
+  {
+    company: string;
+    contact: string;
+    email: string;
+    tier: "community" | "silver" | "gold" | "lead";
+    amount: number;
+    message: string;
+    method: "card" | "on-site" | "bkash" | "nagad" | "google-pay" | "paypal";
+    status: "pledged" | "confirmed" | "paid";
+    daysAgo: number;
+  }[]
+> = {
+  "operations-summit-2026": [
+    {
+      company: "Vantage Freight",
+      contact: "Tom Achterberg",
+      email: "tom@vantagefreight.example",
+      tier: "lead",
+      amount: 1_000_000,
+      message: "Glad to back the summit again this year — the operations room is where our industry actually talks.",
+      method: "paypal",
+      status: "paid",
+      daysAgo: 88,
+    },
+    {
+      company: "Arden Logistics",
+      contact: "Halima Yusuf",
+      email: "halima@ardenlogistics.example",
+      tier: "gold",
+      amount: 400_000,
+      message: "Supporting the workshop stream, with six places for our team.",
+      method: "card",
+      status: "confirmed",
+      daysAgo: 46,
+    },
+    {
+      company: "Brightline Couriers",
+      contact: "Ada Mensah",
+      email: "ada@brightline.example",
+      tier: "community",
+      amount: 50_000,
+      message: "Happy to cover the refreshments cart.",
+      method: "bkash",
+      status: "pledged",
+      daysAgo: 9,
+    },
+  ],
+  "data-leadership-2026": [
+    {
+      company: "Corso Analytics",
+      contact: "Elena Moretti",
+      email: "elena@corsoanalytics.example",
+      tier: "gold",
+      amount: 400_000,
+      message: "We would like to sponsor the metrics workshop.",
+      method: "google-pay",
+      status: "paid",
+      daysAgo: 71,
+    },
+    {
+      company: "Northwind Retail",
+      contact: "Priya Raman",
+      email: "priya@northwind.example",
+      tier: "silver",
+      amount: 150_000,
+      message: "Backing the intensive, and sending four of our leads.",
+      method: "nagad",
+      status: "confirmed",
+      daysAgo: 35,
+    },
+  ],
+  "client-academy-2027": [
+    {
+      company: "Meridian Supply",
+      contact: "Daniel Okafor",
+      email: "daniel@meridiansupply.example",
+      tier: "community",
+      amount: 75_000,
+      message: "A small contribution towards the Manchester days.",
+      method: "card",
+      status: "pledged",
+      daysAgo: 12,
+    },
+  ],
+};
 
 /**
  * Demo catalogue for a business that sells places at its events. Mirrors the
@@ -46,12 +240,38 @@ export const ensureSeeded = mutation({
           .withIndex("by_event", (q) => q.eq("eventId", event._id))
           .collect();
         for (const comment of comments) await ctx.db.delete(comment._id);
+        const products = await ctx.db
+          .query("products")
+          .withIndex("by_event", (q) => q.eq("eventId", event._id))
+          .collect();
+        for (const product of products) await ctx.db.delete(product._id);
+        const orders = await ctx.db
+          .query("orders")
+          .withIndex("by_event", (q) => q.eq("eventId", event._id))
+          .collect();
+        for (const order of orders) await ctx.db.delete(order._id);
+        const reviews = await ctx.db
+          .query("reviews")
+          .withIndex("by_event", (q) => q.eq("eventId", event._id))
+          .collect();
+        for (const review of reviews) await ctx.db.delete(review._id);
         await ctx.db.delete(event._id);
       }
+      const pledges = await ctx.db
+        .query("sponsorships")
+        .withIndex("by_fest", (q) => q.eq("festId", fest._id))
+        .collect();
+      for (const pledge of pledges) await ctx.db.delete(pledge._id);
       await ctx.db.delete(fest._id);
     }
 
     const now = Date.now();
+    const seededEvents: {
+      eventId: Id<"events">;
+      festId: Id<"fests">;
+      slug: string;
+      title: string;
+    }[] = [];
 
     const programmes = [
       {
@@ -252,15 +472,68 @@ export const ensureSeeded = mutation({
         createdAt: now,
       });
       for (const event of events) {
-        await ctx.db.insert("events", {
+        const slug = event.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+        const eventId = await ctx.db.insert("events", {
           ...event,
           festId,
-          slug: event.title
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-+|-+$/g, ""),
+          slug,
           showcase: true,
           createdAt: now,
+        });
+        seededEvents.push({ eventId, festId, slug, title: event.title });
+      }
+      for (const sponsor of SPONSORS[programme.slug] ?? []) {
+        await ctx.db.insert("sponsorships", {
+          festId,
+          eventId: undefined,
+          company: sponsor.company,
+          contactName: sponsor.contact,
+          email: sponsor.email,
+          tier: sponsor.tier,
+          amount: sponsor.amount,
+          message: sponsor.message,
+          paymentMethod: sponsor.method,
+          status: sponsor.status,
+          createdAt: now - sponsor.daysAgo * 86_400_000,
+        });
+      }
+    }
+
+    // Merchandise and snacks go on sale at every seeded event, so the shop has
+    // something real in it the moment the catalogue is first opened.
+    for (const [index, event] of seededEvents.entries()) {
+      for (const item of SHOP_STOCK) {
+        await ctx.db.insert("products", {
+          eventId: event.eventId,
+          festId: event.festId,
+          name: item.name,
+          kind: item.kind,
+          description: item.description,
+          price: item.price,
+          stock: item.stock,
+          sold: item.sold,
+          active: true,
+          createdAt: now,
+        });
+      }
+
+      const picks = [
+        REVIEWS[index % REVIEWS.length],
+        REVIEWS[(index + 3) % REVIEWS.length],
+      ];
+      for (const review of picks) {
+        await ctx.db.insert("reviews", {
+          eventId: event.eventId,
+          festId: event.festId,
+          userId: undefined,
+          authorName: review.author,
+          authorCompany: review.company,
+          rating: review.rating,
+          body: review.body,
+          createdAt: now - review.daysAgo * 86_400_000,
         });
       }
     }

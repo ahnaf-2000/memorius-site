@@ -7,10 +7,56 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { useAuth } from "@/hooks/use-auth";
+import { readPendingPersona, rememberPersona } from "@/hooks/use-profile";
 import { errorMessage } from "@/lib/format";
-import { ArrowLeft, ArrowRight, Loader2, Mail, UserX } from "lucide-react";
+import type { Persona } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  Handshake,
+  Loader2,
+  Mail,
+  Ticket,
+  UserX,
+} from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
+
+/**
+ * The three ways into the product. The choice is made before the email goes in,
+ * because it decides what the console opens on afterwards.
+ */
+const PERSONAS: {
+  id: Persona;
+  name: string;
+  blurb: string;
+  tint: string;
+  icon: React.ReactNode;
+}[] = [
+  {
+    id: "organizer",
+    name: "Organizer — I run events",
+    blurb: "Publish programmes, sell places, merchandise and snacks, and collect sponsorship.",
+    tint: "",
+    icon: <Building2 className="size-4" />,
+  },
+  {
+    id: "participant",
+    name: "Participant — I attend",
+    blurb: "Book a place in a minute, keep your schedule, and leave a review afterwards.",
+    tint: "icon-chip-cool",
+    icon: <Ticket className="size-4" />,
+  },
+  {
+    id: "sponsor",
+    name: "Sponsor — I back events",
+    blurb: "Pledge towards a programme or a single event, in four tiers.",
+    tint: "icon-chip-plum",
+    icon: <Handshake className="size-4" />,
+  },
+];
 
 interface AuthProps {
   redirectAfterAuth?: string;
@@ -35,6 +81,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     redirectAfterAuth,
   );
   const [step, setStep] = useState<"signIn" | { email: string }>("signIn");
+  const [persona, setPersona] = useState<Persona>(
+    () => readPendingPersona() ?? "participant",
+  );
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +100,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setError(null);
     try {
       const formData = new FormData(event.currentTarget);
+      rememberPersona(persona);
       await signIn("email-otp", formData);
       setStep({ email: formData.get("email") as string });
       setIsLoading(false);
@@ -70,6 +120,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setError(null);
     try {
       const formData = new FormData(event.currentTarget);
+      rememberPersona(persona);
       await signIn("email-otp", formData);
       navigate(redirect);
     } catch (verifyError) {
@@ -84,6 +135,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setIsLoading(true);
     setError(null);
     try {
+      rememberPersona(persona);
       await signIn("anonymous");
       navigate(redirect);
     } catch (guestError) {
@@ -110,15 +162,51 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         <div className="w-full max-w-[400px]">
           {step === "signIn" ? (
             <>
-              <h1 className="text-[26px] leading-[1.15] font-medium tracking-[-0.03em] text-balance">
-                Your seat, saved.
+              <h1 className="text-[28px] leading-[1.12] font-medium tracking-[-0.03em] text-balance">
+                One account, whichever side of the table you are on.
               </h1>
               <p className="mt-3 text-[13px] leading-6 text-muted-foreground">
-                Sign in with an email address. No password to remember — we send
-                a six-digit code.
+                No password to remember — we send a six-digit code by email. Pick
+                how you are joining, and the product opens on the right screen.
               </p>
 
-              <form onSubmit={handleEmailSubmit} className="mt-9">
+              <div className="mt-8">
+                <p className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
+                  I am joining as
+                </p>
+                <div className="mt-3 grid gap-2">
+                  {PERSONAS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setPersona(option.id)}
+                      aria-pressed={persona === option.id}
+                      className={cn(
+                        "flex items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-[border-color,background-color,box-shadow] duration-200 ease-soft",
+                        persona === option.id
+                          ? "border-brand-line bg-brand-soft shadow-hairline"
+                          : "border-border hover:border-foreground/25",
+                      )}
+                    >
+                      <span
+                        className={cn("icon-chip mt-0.5 size-8 shrink-0", option.tint)}
+                      >
+                        {option.icon}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[13px] font-medium tracking-[-0.01em]">
+                          {option.name}
+                        </span>
+                        <span className="mt-1 block text-[12px] leading-5 text-muted-foreground">
+                          {option.blurb}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <form onSubmit={handleEmailSubmit} className="mt-8">
                 <label
                   htmlFor="email"
                   className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase"
@@ -179,7 +267,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                 </Button>
                 <p className="mt-3 text-center text-[11px] leading-5 text-muted-foreground">
                   A guest account can register for events, but your schedule is
-                  only kept on this device.
+                  only kept on this device. Stuck at any point? Memo, the
+                  assistant, is in the corner of every page.
                 </p>
               </form>
             </>
@@ -274,7 +363,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
       <footer className="border-t border-border">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-5 py-6 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <span>© {new Date().getFullYear()} Cadence</span>
+          <span>© {new Date().getFullYear()} Memorius</span>
           <span>
             Secured by{" "}
             <a

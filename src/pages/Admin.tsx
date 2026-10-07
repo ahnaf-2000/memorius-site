@@ -1,3 +1,7 @@
+import { ConsoleReviews } from "@/components/site/ConsoleReviews";
+import { ConsoleRevenue } from "@/components/site/ConsoleRevenue";
+import { ConsoleShop } from "@/components/site/ConsoleShop";
+import { ConsoleSponsorships } from "@/components/site/ConsoleSponsorships";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import {
@@ -789,9 +793,15 @@ export default function Admin() {
   const programmes = useQuery(api.fests.mine);
   const events = useQuery(api.events.organized);
   const bookings = useQuery(api.registrations.forBusiness);
-  const [tab, setTab] = useState<"overview" | "programmes">("overview");
+  const [tab, setTab] = useState<
+    "overview" | "revenue" | "shop" | "sponsors" | "reviews" | "programmes"
+  >("overview");
+  // The shop hangs off one event at a time, so this tab keeps its own choice.
+  const [shopEventId, setShopEventId] = useState<Id<"events"> | null>(null);
 
-  const tabClass = (value: "overview" | "programmes") =>
+  const tabClass = (
+    value: "overview" | "revenue" | "shop" | "sponsors" | "reviews" | "programmes",
+  ) =>
     cn(
       "h-full rounded-full px-4 text-[13px] transition-[background-color,color,box-shadow] duration-200 ease-soft",
       tab === value
@@ -800,6 +810,7 @@ export default function Admin() {
     );
 
   const consoleEvents = (events ?? []) as ConsoleEvent[];
+  const activeShopEventId = shopEventId ?? consoleEvents[0]?._id ?? null;
   const liveBookings = (bookings ?? []).filter(
     (row) => row.status !== "cancelled",
   );
@@ -882,12 +893,34 @@ export default function Admin() {
 
           <Tabs
             value={tab}
-            onValueChange={(value) => setTab(value as "overview" | "programmes")}
+            onValueChange={(value) =>
+              setTab(
+                value as
+                  | "overview"
+                  | "revenue"
+                  | "shop"
+                  | "sponsors"
+                  | "reviews"
+                  | "programmes",
+              )
+            }
             className="mt-10 gap-0"
           >
-            <TabsList className="h-10 rounded-full border border-border bg-transparent p-1">
+            <TabsList className="h-auto flex-wrap rounded-full border border-border bg-transparent p-1">
               <TabsTrigger value="overview" className={tabClass("overview")}>
                 Overview
+              </TabsTrigger>
+              <TabsTrigger value="revenue" className={tabClass("revenue")}>
+                Revenue
+              </TabsTrigger>
+              <TabsTrigger value="shop" className={tabClass("shop")}>
+                Shop
+              </TabsTrigger>
+              <TabsTrigger value="sponsors" className={tabClass("sponsors")}>
+                Sponsors
+              </TabsTrigger>
+              <TabsTrigger value="reviews" className={tabClass("reviews")}>
+                Reviews
               </TabsTrigger>
               <TabsTrigger
                 value="programmes"
@@ -1101,6 +1134,81 @@ export default function Admin() {
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="revenue" className="animate-rise mt-10">
+              <ConsoleRevenue />
+            </TabsContent>
+
+            <TabsContent value="shop" className="animate-rise mt-10">
+              <div className="max-w-3xl">
+                <p className="label-eyebrow">Merchandise and snacks</p>
+                <p className="mt-3 max-w-xl text-[13px] leading-6 text-muted-foreground">
+                  Put items on sale at an event. Attendees build a basket on the
+                  event page and pay with the same methods as places, in their
+                  own currency, and every order lands in Revenue.
+                </p>
+
+                {consoleEvents.length === 0 ? (
+                  <p className="mt-8 text-[13px] text-muted-foreground">
+                    Add an event first — the shop hangs off an event. Your
+                    programmes live in the tab beside this one.
+                  </p>
+                ) : (
+                  <>
+                    <div className="mt-6 flex flex-wrap gap-2">
+                      {consoleEvents.map((event) => (
+                        <button
+                          key={event._id}
+                          type="button"
+                          onClick={() => setShopEventId(event._id)}
+                          aria-pressed={activeShopEventId === event._id}
+                          className={cn(
+                            "chip",
+                            activeShopEventId === event._id
+                              ? "chip-tinted border-brand-line text-foreground"
+                              : "",
+                          )}
+                        >
+                          {event.title}
+                        </button>
+                      ))}
+                    </div>
+                    {activeShopEventId !== null && (
+                      <div className="mt-6 rounded-lg border border-border bg-card px-5 py-5">
+                        <ConsoleShop eventId={activeShopEventId} />
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="sponsors" className="animate-rise mt-10">
+              <div className="max-w-3xl">
+                <p className="label-eyebrow">Sponsorship</p>
+                <p className="mt-3 max-w-xl text-[13px] leading-6 text-muted-foreground">
+                  Pledges come in from the event and programme pages, in four
+                  tiers. Confirming a pledge moves it from promise to booking;
+                  marking it paid records the money.
+                </p>
+                <div className="mt-8">
+                  <ConsoleSponsorships />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="reviews" className="animate-rise mt-10">
+              <div className="max-w-3xl">
+                <p className="label-eyebrow">Reviews</p>
+                <p className="mt-3 max-w-xl text-[13px] leading-6 text-muted-foreground">
+                  Ratings left by attendees, across every event you run. A
+                  review can be withdrawn if it breaks your house rules.
+                </p>
+                <div className="mt-8">
+                  <ConsoleReviews />
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

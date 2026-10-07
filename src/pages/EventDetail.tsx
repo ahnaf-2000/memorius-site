@@ -1,4 +1,11 @@
 import { EventList, StatusDot } from "@/components/site/EventList";
+import { EventReviews } from "@/components/site/EventReviews";
+import { EventShop } from "@/components/site/EventShop";
+import { EventSponsors } from "@/components/site/EventSponsors";
+import {
+  MethodPicker,
+  TestModeNote,
+} from "@/components/site/PaymentMethods";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import {
@@ -32,8 +39,7 @@ import {
   relativeDay,
   seatSummary,
 } from "@/lib/format";
-import type { CommentView, EventView } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import type { CommentView, EventView, PaymentMethod } from "@/lib/types";
 import { useMutation, useQuery } from "convex/react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { motion } from "framer-motion";
@@ -49,7 +55,6 @@ import {
   Loader2,
   MapPin,
   Paperclip,
-  Ticket,
   Users,
   X,
 } from "lucide-react";
@@ -126,52 +131,6 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PaymentChoice({
-  selected,
-  onSelect,
-  title,
-  detail,
-  icon,
-}: {
-  selected: boolean;
-  onSelect: () => void;
-  title: string;
-  detail: string;
-  icon: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
-      className={cn(
-        "flex w-full items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-colors",
-        selected
-          ? "border-foreground bg-accent/60"
-          : "border-border hover:border-foreground/25",
-      )}
-    >
-      <span
-        className={cn(
-          "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border",
-          selected ? "border-foreground bg-foreground text-background" : "border-border",
-        )}
-      >
-        {selected && <Check className="size-3" />}
-      </span>
-      <span className="min-w-0">
-        <span className="flex items-center gap-2 text-[13px] font-medium tracking-[-0.01em]">
-          {icon}
-          {title}
-        </span>
-        <span className="mt-1 block text-[12px] leading-5 text-muted-foreground">
-          {detail}
-        </span>
-      </span>
-    </button>
-  );
-}
-
 /* ------------------------------------------------------------- booking rail */
 
 function BookingPanel({
@@ -196,7 +155,7 @@ function BookingPanel({
     notes: "",
   });
   const [edited, setEdited] = useState<Record<string, boolean>>({});
-  const [method, setMethod] = useState<"card" | "on-site">("card");
+  const [method, setMethod] = useState<PaymentMethod>("bkash");
   const [step, setStep] = useState<"details" | "checkout">("details");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -553,27 +512,8 @@ function BookingPanel({
               <p className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
                 Payment
               </p>
-              <PaymentChoice
-                selected={method === "card"}
-                onSelect={() => setMethod("card")}
-                title="Pay now by card"
-                detail="Charged immediately and recorded against your booking reference."
-                icon={<CreditCard className="size-3.5" />}
-              />
-              <PaymentChoice
-                selected={method === "on-site"}
-                onSelect={() => setMethod("on-site")}
-                title="Settle on the day"
-                detail="Your place is held and the balance is taken at the desk."
-                icon={<Ticket className="size-3.5" />}
-              />
-              {method === "card" && (
-                <p className="rounded-md border border-dashed border-border px-3 py-2.5 text-[11px] leading-5 text-muted-foreground">
-                  Test mode: card capture runs through a payment provider. No
-                  card is charged until one is connected, and the payment is
-                  recorded against the booking.
-                </p>
-              )}
+              <MethodPicker value={method} onChange={setMethod} />
+              <TestModeNote />
             </div>
           ) : (
             <p className="rounded-md border border-border bg-background px-4 py-3 text-[12px] leading-5 text-muted-foreground">
@@ -599,7 +539,7 @@ function BookingPanel({
             )}
             {isFull
               ? "Join the waiting list"
-              : payable && method === "card"
+              : payable && method !== "on-site"
                 ? `Pay ${formatMoney(event.price)} and confirm`
                 : "Confirm booking"}
           </Button>
@@ -1005,7 +945,7 @@ export default function EventDetail() {
                   {[
                     event.price === 0
                       ? "There is no charge for this event."
-                      : `${formatMoney(event.price)} per place. Pay by card at checkout, or settle on the day.`,
+                      : `${formatMoney(event.price)} per place. Pay by bKash, Nagad, Google Pay, PayPal or card at checkout, or settle on the day.`,
                     event.capacity - event.seatsTaken > 0
                       ? `${event.capacity - event.seatsTaken} places remain. Once they are gone, new bookings join the waiting list.`
                       : "The room is full. New bookings join the waiting list and are promoted automatically.",
@@ -1021,6 +961,20 @@ export default function EventDetail() {
               </section>
 
               <Discussion eventId={event._id} />
+
+              <EventShop eventId={event._id} eventSlug={event.slug} />
+
+              {fest !== null && (
+                <EventSponsors
+                  festId={event.festId}
+                  eventId={event._id}
+                  eventTitle={event.title}
+                  eventSlug={event.slug}
+                  programmeName={fest.name}
+                />
+              )}
+
+              <EventReviews eventId={event._id} />
 
               {alsoInProgramme.length > 0 && fest !== null && (
                 <section className="mt-16">
