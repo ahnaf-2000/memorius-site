@@ -29,7 +29,12 @@ import {
 } from "@/lib/format";
 import type { EventListItem, ProgrammeListItem } from "@/lib/types";
 import { useQuery } from "convex/react";
-import { motion } from "framer-motion";
+import {
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+} from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
   ArrowRight,
@@ -45,8 +50,11 @@ import {
   Ticket,
   TrendingUp,
 } from "lucide-react";
-import { useState } from "react";
-import type { ReactNode } from "react";
+import {
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { Link } from "react-router";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -169,6 +177,70 @@ function Reveal({
   );
 }
 
+/**
+ * Scroll-entrance for the grids further down the page: each card rises the
+ * first time it is scrolled to, and siblings arrive on a small stagger so a
+ * row reads as one wave rather than one block.
+ */
+function Rise({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.65, delay, ease: EASE }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/**
+ * A gentle pointer tilt for the hero card: the card leans a few degrees
+ * toward the cursor and springs back when it leaves.
+ */
+function Tilt({ children }: { children: ReactNode }) {
+  const reduced = useReducedMotion();
+  const rx = useMotionValue(0);
+  const ry = useMotionValue(0);
+  const spring = { stiffness: 180, damping: 18 };
+  const srx = useSpring(rx, spring);
+  const sry = useSpring(ry, spring);
+
+  function onMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (reduced) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const px = (event.clientX - rect.left) / rect.width - 0.5;
+    const py = (event.clientY - rect.top) / rect.height - 0.5;
+    ry.set(px * 5);
+    rx.set(-py * 5);
+  }
+
+  function onLeave() {
+    rx.set(0);
+    ry.set(0);
+  }
+
+  return (
+    <motion.div
+      style={{ rotateX: srx, rotateY: sry, transformPerspective: 900 }}
+      onPointerMove={onMove}
+      onPointerLeave={onLeave}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 function Stat({ count, label }: { count?: number; label: string }) {
   const shown = useCountUp(count);
   return (
@@ -179,6 +251,101 @@ function Stat({ count, label }: { count?: number; label: string }) {
       <span className="text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
         {label}
       </span>
+    </div>
+  );
+}
+
+/** A swash that draws itself under a word once the page has settled. */
+function Swash({ children }: { children: ReactNode }) {
+  const [offset] = useState(() =>
+    introPlays() ? INTRO_PART_MS / 1000 - 0.2 : 0,
+  );
+  return (
+    <span className="relative inline-block">
+      {children}
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 220 12"
+        className="absolute -bottom-2 left-0 h-2.5 w-full"
+        fill="none"
+      >
+        <motion.path
+          d="M3 9C60 3 150 2 217 7"
+          stroke="var(--warm)"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.9, delay: offset + 0.9, ease: EASE }}
+        />
+      </svg>
+    </span>
+  );
+}
+
+/**
+ * A small claim that drifts beside the hero card: it fades in late, then
+ * floats on its own slow clock. Hidden below lg, where there is no room.
+ */
+function FloatChip(props: {
+  className: string;
+  delay: number;
+  children: ReactNode;
+}) {
+  const reduced = useReducedMotion();
+  return (
+    <motion.div
+      aria-hidden="true"
+      className={cn(
+        "absolute z-10 hidden items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] text-muted-foreground shadow-lift backdrop-blur-sm lg:flex",
+        props.className,
+      )}
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={
+        reduced
+          ? { opacity: 1, scale: 1 }
+          : { opacity: 1, scale: 1, y: [0, -7, 0] }
+      }
+      transition={{
+        opacity: { delay: props.delay, duration: 0.5, ease: EASE },
+        scale: { delay: props.delay, duration: 0.5, ease: EASE },
+        y: reduced
+          ? undefined
+          : {
+              duration: 5.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: props.delay,
+            },
+      }}
+    >
+      {props.children}
+    </motion.div>
+  );
+}
+
+/**
+ * A strip of words that never stops moving — the live categories when there
+ * are events to name, otherwise the standing invitation. It holds the list
+ * twice so the slide loops without a seam, and pauses for the pointer.
+ */
+function Marquee({ words }: { words: string[] }) {
+  const doubled = [...words, ...words];
+  return (
+    <div
+      aria-hidden="true"
+      className="marquee overflow-hidden border-y border-border bg-card/60 py-3.5"
+    >
+      <div className="marquee-track flex w-max items-center">
+        {doubled.map((word, index) => (
+          <span key={index} className="flex items-center whitespace-nowrap">
+            <span className="font-display px-4 text-[13px] tracking-[0.02em] text-muted-foreground">
+              {word}
+            </span>
+            <span className="text-[9px] text-warm">✦</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -307,6 +474,18 @@ export default function Landing() {
     .slice(0, 3);
 
   const loaded = events !== undefined;
+  const marqueeWords = Array.from(
+    new Set([
+      "Conferences",
+      "Workshops",
+      "Seminars",
+      "Hackathons",
+      ...(events ?? []).map((event) => event.category),
+      "Book in a minute",
+      "Pay your way",
+      "Sponsor a season",
+    ]),
+  );
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -323,6 +502,14 @@ export default function Landing() {
             aria-hidden="true"
             className="grid-veil pointer-events-none absolute inset-x-0 -top-40 h-[38rem]"
           />
+          <div
+            aria-hidden="true"
+            className="drift-a pointer-events-none absolute -top-24 right-[6%] size-72 rounded-full bg-brand/20 blur-3xl"
+          />
+          <div
+            aria-hidden="true"
+            className="drift-b pointer-events-none absolute top-44 -left-12 size-64 rounded-full bg-warm/20 blur-3xl"
+          />
           <div className="relative grid gap-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-20">
             <div>
               <Reveal>
@@ -337,7 +524,9 @@ export default function Landing() {
               <Reveal delay={0.06}>
                 <h1 className="mt-8 text-[44px] leading-[1.02] font-medium tracking-[-0.04em] text-balance sm:text-[62px]">
                   Find your next event, and{" "}
-                  <em className="font-display font-normal italic">book it</em>{" "}
+                  <em className="font-display font-normal italic">
+                    <Swash>book it</Swash>
+                  </em>{" "}
                   in a minute.
                 </h1>
               </Reveal>
@@ -355,7 +544,7 @@ export default function Landing() {
                   <Button
                     asChild
                     size="lg"
-                    className="h-11 gap-2 rounded-full px-6 text-[14px]"
+                    className="sheen h-11 gap-2 rounded-full px-6 text-[14px]"
                   >
                     <Link to="/events">
                       Browse the catalogue
@@ -384,14 +573,32 @@ export default function Landing() {
             </div>
 
             <Reveal delay={0.2} className="lg:pt-4">
-              {nextEvent === undefined ? (
-                <Skeleton className="h-[440px] w-full rounded-lg" />
-              ) : (
-                <NextEventCard event={nextEvent} />
-              )}
+              <div className="relative">
+                <FloatChip className="-top-5 right-6 rotate-3" delay={1.0}>
+                  <Ticket className="size-3 text-brand" />
+                  Booked in a minute
+                </FloatChip>
+                <FloatChip className="top-1/2 -left-7 -rotate-2" delay={1.25}>
+                  <Sparkles className="size-3 text-warm" />
+                  Memo answers live
+                </FloatChip>
+                <FloatChip className="-bottom-5 right-10 rotate-2" delay={1.5}>
+                  <Handshake className="size-3 text-plum" />
+                  Sponsor in four tiers
+                </FloatChip>
+                {nextEvent === undefined ? (
+                  <Skeleton className="h-[440px] w-full rounded-lg" />
+                ) : (
+                  <Tilt>
+                    <NextEventCard event={nextEvent} />
+                  </Tilt>
+                )}
+              </div>
             </Reveal>
           </div>
         </section>
+
+        <Marquee words={marqueeWords} />
 
         {/* Promotions in flight */}
         <PromoBand />
@@ -430,13 +637,16 @@ export default function Landing() {
                   to: "/programmes",
                   cta: "Back an event",
                 },
-              ].map((role) => (
-                <div
-                  key={role.title}
-                  className="surface-card flex flex-col justify-between rounded-lg border border-border bg-card p-6 shadow-hairline hover:border-foreground/15"
-                >
+              ].map((role, index) => (
+                <Rise key={role.title} delay={index * 0.08} className="h-full">
+                <div className="group surface-card flex h-full flex-col justify-between rounded-lg border border-border bg-card p-6 shadow-hairline hover:border-foreground/15">
                   <div>
-                    <span className={cn("icon-chip", role.tint)}>
+                    <span
+                      className={cn(
+                        "icon-chip transition-transform duration-500 ease-quint group-hover:-rotate-6 group-hover:scale-110",
+                        role.tint,
+                      )}
+                    >
                       <role.icon className="size-4" />
                     </span>
                     <h3 className="mt-5 text-[17px] font-medium tracking-[-0.02em]">
@@ -458,6 +668,7 @@ export default function Landing() {
                     </Link>
                   </Button>
                 </div>
+                </Rise>
               ))}
             </div>
           </div>
@@ -569,12 +780,10 @@ export default function Landing() {
               description="The structure that keeps a calendar legible: a business runs programmes, a programme holds events, an event takes bookings."
             />
             <div className="mt-12 grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-              {FLOW.map((step) => (
-                <div
-                  key={step.index}
-                  className="bg-background px-0 pt-8 sm:px-7 sm:pt-10 sm:first:pl-0 sm:last:pr-0"
-                >
-                  <span className="font-display text-[15px] text-muted-foreground tabular-nums">
+              {FLOW.map((step, index) => (
+                <Rise key={step.index} delay={index * 0.06}>
+                <div className="bg-background px-0 pt-8 sm:px-7 sm:pt-10 sm:first:pl-0 sm:last:pr-0">
+                  <span className="font-display text-[15px] text-brand tabular-nums">
                     {step.index}
                   </span>
                   <h3 className="mt-5 text-[17px] font-medium tracking-[-0.02em]">
@@ -584,6 +793,7 @@ export default function Landing() {
                     {step.copy}
                   </p>
                 </div>
+                </Rise>
               ))}
             </div>
           </div>
@@ -694,9 +904,19 @@ export default function Landing() {
               description="Selling, sponsorship, feedback, payments and a price that knows where the customer is — all inside the same calendar."
             />
             <div className="mt-10 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-              {FEATURES.map((feature) => (
-                <div key={feature.title} className="bg-card p-6">
-                  <span className={cn("icon-chip", feature.tint)}>
+              {FEATURES.map((feature, index) => (
+                <Rise
+                  key={feature.title}
+                  delay={index * 0.05}
+                  className="h-full"
+                >
+                <div className="group h-full bg-card p-6">
+                  <span
+                    className={cn(
+                      "icon-chip transition-transform duration-500 ease-quint group-hover:-rotate-6 group-hover:scale-110",
+                      feature.tint,
+                    )}
+                  >
                     <feature.icon className="size-4" />
                   </span>
                   <h3 className="mt-5 text-[15px] font-medium tracking-[-0.015em]">
@@ -706,6 +926,7 @@ export default function Landing() {
                     {feature.copy}
                   </p>
                 </div>
+                </Rise>
               ))}
             </div>
 
@@ -743,8 +964,12 @@ export default function Landing() {
         </section>
 
         {/* Closing call to action */}
-        <section className="border-t border-border">
-          <div className="mx-auto w-full max-w-6xl px-5 py-24 text-center sm:px-8 sm:py-32">
+        <section className="relative overflow-hidden border-t border-border">
+          <div
+            aria-hidden="true"
+            className="breathe glow-soft pointer-events-none absolute inset-x-0 top-0 h-72"
+          />
+          <div className="relative mx-auto w-full max-w-6xl px-5 py-24 text-center sm:px-8 sm:py-32">
             <h2 className="font-display mx-auto max-w-3xl text-[34px] leading-[1.12] tracking-[-0.02em] text-balance sm:text-[46px]">
               Take your place in <em className="italic">under a minute</em>.
             </h2>
@@ -756,7 +981,7 @@ export default function Landing() {
               <Button
                 asChild
                 size="lg"
-                className="h-11 gap-2 rounded-full px-6 text-[14px]"
+                className="sheen h-11 gap-2 rounded-full px-6 text-[14px]"
               >
                 <Link to="/auth?returnTo=%2Fevents">
                   Create your account

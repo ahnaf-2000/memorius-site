@@ -567,3 +567,100 @@ html[data-palette="colour-blind"].dark {
   }
 }
 
+/*
+ * Livelier landing pieces. Every one of them animates only when the visitor
+ * has not asked for reduced motion, so the page stays still for those who
+ * prefer it — the same rule the components follow with useReducedMotion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  /* An endless drift for the strip of words. The track holds the list twice,
+     so sliding it half a width loops seamlessly; hover holds it still. */
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  .marquee-track {
+    animation: marquee 30s linear infinite;
+  }
+  .marquee:hover .marquee-track {
+    animation-play-state: paused;
+  }
+
+  /* Two blurred companions drifting behind the hero, on offset clocks. */
+  @keyframes drift-a {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(4%, 6%, 0) scale(1.08);
+    }
+  }
+  @keyframes drift-b {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1.06);
+    }
+    50% {
+      transform: translate3d(-5%, -4%, 0) scale(1);
+    }
+  }
+  .drift-a {
+    animation: drift-a 16s ease-in-out infinite;
+  }
+  .drift-b {
+    animation: drift-b 21s ease-in-out infinite;
+  }
+
+  /* A light sweep across a primary button as the pointer arrives. Card is
+     mixed in so the sweep contrasts against the button in both themes. */
+  @keyframes sheen {
+    from {
+      transform: translateX(-130%) skewX(-18deg);
+    }
+    to {
+      transform: translateX(260%) skewX(-18deg);
+    }
+  }
+  .sheen {
+    position: relative;
+    overflow: hidden;
+  }
+  .sheen::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 42%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--card) 55%, transparent),
+      transparent
+    );
+    transform: translateX(-130%) skewX(-18deg);
+  }
+  .sheen:hover::after {
+    animation: sheen 900ms var(--ease-quint);
+  }
+
+  /* A soft light that slowly gathers and lets go. */
+  @keyframes breathe {
+    0%,
+    100% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  .breathe {
+    animation: breathe 7s ease-in-out infinite;
+  }
+}
+
