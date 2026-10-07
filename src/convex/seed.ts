@@ -6,7 +6,7 @@ import { mutation } from "./_generated/server";
  * behind by an earlier version — and only showcase data, never a programme a
  * business created itself.
  */
-const SHOWCASE_VERSION = 3;
+const SHOWCASE_VERSION = 4;
 
 /** What is on sale at every seeded event: merchandise to keep, snacks for the day. */
 const SHOP_STOCK = [
@@ -111,6 +111,55 @@ const REVIEWS = [
     daysAgo: 19,
   },
 ] as const;
+
+/**
+ * Promotions already in flight when the catalogue is first opened, so the
+ * campaign surfaces have something real to show.
+ */
+const CAMPAIGNS = [
+  {
+    festSlug: "operations-summit-2026",
+    eventSlug: null,
+    code: "EARLYBIRD",
+    title: "Early bird — 15% off the summit week",
+    blurb:
+      "Book anything in the Operations Summit while the early bird runs and take 15% off the place.",
+    kind: "percent" as const,
+    value: 15,
+    daysFrom: -6,
+    daysTo: 24,
+    maxUses: 250,
+    uses: 43,
+  },
+  {
+    festSlug: "data-leadership-2026",
+    eventSlug: "data-strategy-intensive",
+    code: "TEAM25",
+    title: "Send the team — 25% off the intensive",
+    blurb:
+      "Bringing more than one person to the Data Strategy Intensive? This takes a quarter off each place.",
+    kind: "percent" as const,
+    value: 25,
+    daysFrom: -3,
+    daysTo: 30,
+    maxUses: 120,
+    uses: 17,
+  },
+  {
+    festSlug: "client-academy-2027",
+    eventSlug: null,
+    code: "MANCHESTER75",
+    title: "Manchester launch — a fixed credit",
+    blurb:
+      "A credit towards either Client Academy day, while the launch offer lasts.",
+    kind: "amount" as const,
+    value: 7500,
+    daysFrom: -1,
+    daysTo: 45,
+    maxUses: 80,
+    uses: 6,
+  },
+];
 
 /** Backers per programme, at programme level, in the four published tiers. */
 const SPONSORS: Record<
@@ -262,6 +311,11 @@ export const ensureSeeded = mutation({
         .withIndex("by_fest", (q) => q.eq("festId", fest._id))
         .collect();
       for (const pledge of pledges) await ctx.db.delete(pledge._id);
+      const campaigns = await ctx.db
+        .query("campaigns")
+        .withIndex("by_fest", (q) => q.eq("festId", fest._id))
+        .collect();
+      for (const campaign of campaigns) await ctx.db.delete(campaign._id);
       await ctx.db.delete(fest._id);
     }
 
@@ -272,6 +326,7 @@ export const ensureSeeded = mutation({
       slug: string;
       title: string;
     }[] = [];
+    const festIds: Record<string, Id<"fests">> = {};
 
     const programmes = [
       {
@@ -471,6 +526,7 @@ export const ensureSeeded = mutation({
         showcaseVersion: SHOWCASE_VERSION,
         createdAt: now,
       });
+      festIds[programme.slug] = festId;
       for (const event of events) {
         const slug = event.title
           .toLowerCase()
@@ -536,6 +592,27 @@ export const ensureSeeded = mutation({
           createdAt: now - review.daysAgo * 86_400_000,
         });
       }
+    }
+
+    for (const campaign of CAMPAIGNS) {
+      const festId = festIds[campaign.festSlug];
+      if (festId === undefined) continue;
+      const event = seededEvents.find((row) => row.slug === campaign.eventSlug);
+      await ctx.db.insert("campaigns", {
+        festId,
+        eventId: event?.eventId,
+        code: campaign.code,
+        title: campaign.title,
+        blurb: campaign.blurb,
+        kind: campaign.kind,
+        value: campaign.value,
+        startsAt: now + campaign.daysFrom * 86_400_000,
+        endsAt: now + campaign.daysTo * 86_400_000,
+        maxUses: campaign.maxUses,
+        uses: campaign.uses,
+        active: true,
+        createdAt: now,
+      });
     }
 
     return { seeded: true as const, replaced: stale.length };

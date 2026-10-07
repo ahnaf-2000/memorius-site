@@ -1,4 +1,4 @@
-import { Brand } from "@/components/site/Brand";
+import { Brand, BrandMark } from "@/components/site/Brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -363,17 +363,18 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
       <footer className="border-t border-border">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-5 py-6 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <span>© {new Date().getFullYear()} Memorius</span>
+          <span className="inline-flex items-center gap-2">
+            <BrandMark className="size-4 rounded-[5px]" />
+            © {new Date().getFullYear()} Memorius
+          </span>
           <span>
-            Secured by{" "}
-            <a
-              href="https://freebuff.com"
-              target="_blank"
-              rel="noopener noreferrer"
+            Need a hand?{" "}
+            <Link
+              to="/contact"
               className="underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
             >
-              freebuff.com
-            </a>
+              Talk to the team
+            </Link>
           </span>
         </div>
       </footer>

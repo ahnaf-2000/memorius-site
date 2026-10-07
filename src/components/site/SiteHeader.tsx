@@ -30,6 +30,7 @@ import { Link, NavLink, useNavigate } from "react-router";
 const PRIMARY_NAV = [
   { to: "/events", label: "Catalogue" },
   { to: "/programmes", label: "Programmes" },
+  { to: "/contact", label: "Contact" },
 ];
 
 export function SiteHeader() {

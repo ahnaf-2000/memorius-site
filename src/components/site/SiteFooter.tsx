@@ -18,12 +18,20 @@ const COLUMNS = [
       { to: "/auth?returnTo=%2Fdashboard", label: "Sign in" },
     ],
   },
+  {
+    heading: "Company",
+    links: [
+      { to: "/contact", label: "Contact" },
+      { to: "/contact", label: "Press and partnerships" },
+      { to: "/events", label: "What's on" },
+    ],
+  },
 ];
 
 export function SiteFooter() {
   return (
     <footer className="border-t border-border">
-      <div className="mx-auto grid w-full max-w-6xl gap-12 px-5 py-16 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr]">
+      <div className="mx-auto grid w-full max-w-6xl gap-12 px-5 py-16 sm:px-8 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
           <Brand />
           <p className="mt-5 max-w-xs text-[13px] leading-6 text-muted-foreground">
@@ -53,8 +61,13 @@ export function SiteFooter() {
       </div>
 
       <div className="border-t border-border">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-5 py-6 text-[11px] tracking-[0.04em] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-5 py-6 text-[11px] tracking-[0.04em] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <span>© {new Date().getFullYear()} Memorius</span>
+          {/* A full reload, deliberately: the opening sequence reads the query
+              string once, on mount, and this is the only way to ask for it. */}
+          <a href="/?intro=1" className="link-quiet w-fit">
+            Replay the opening
+          </a>
           <span className="uppercase">
             Business · Programme · Event · Booking
           </span>

@@ -1,3 +1,4 @@
+import { ConsoleCampaigns } from "@/components/site/ConsoleCampaigns";
 import { ConsoleReviews } from "@/components/site/ConsoleReviews";
 import { ConsoleRevenue } from "@/components/site/ConsoleRevenue";
 import { ConsoleShop } from "@/components/site/ConsoleShop";
@@ -794,13 +795,26 @@ export default function Admin() {
   const events = useQuery(api.events.organized);
   const bookings = useQuery(api.registrations.forBusiness);
   const [tab, setTab] = useState<
-    "overview" | "revenue" | "shop" | "sponsors" | "reviews" | "programmes"
+    | "overview"
+    | "revenue"
+    | "campaigns"
+    | "shop"
+    | "sponsors"
+    | "reviews"
+    | "programmes"
   >("overview");
   // The shop hangs off one event at a time, so this tab keeps its own choice.
   const [shopEventId, setShopEventId] = useState<Id<"events"> | null>(null);
 
   const tabClass = (
-    value: "overview" | "revenue" | "shop" | "sponsors" | "reviews" | "programmes",
+    value:
+      | "overview"
+      | "revenue"
+      | "campaigns"
+      | "shop"
+      | "sponsors"
+      | "reviews"
+      | "programmes",
   ) =>
     cn(
       "h-full rounded-full px-4 text-[13px] transition-[background-color,color,box-shadow] duration-200 ease-soft",
@@ -898,6 +912,7 @@ export default function Admin() {
                 value as
                   | "overview"
                   | "revenue"
+                  | "campaigns"
                   | "shop"
                   | "sponsors"
                   | "reviews"
@@ -912,6 +927,9 @@ export default function Admin() {
               </TabsTrigger>
               <TabsTrigger value="revenue" className={tabClass("revenue")}>
                 Revenue
+              </TabsTrigger>
+              <TabsTrigger value="campaigns" className={tabClass("campaigns")}>
+                Campaigns
               </TabsTrigger>
               <TabsTrigger value="shop" className={tabClass("shop")}>
                 Shop
@@ -1138,6 +1156,21 @@ export default function Admin() {
 
             <TabsContent value="revenue" className="animate-rise mt-10">
               <ConsoleRevenue />
+            </TabsContent>
+
+            <TabsContent value="campaigns" className="animate-rise mt-10">
+              <div className="max-w-3xl">
+                <p className="label-eyebrow">Promotional campaigns</p>
+                <p className="mt-3 max-w-xl text-[13px] leading-6 text-muted-foreground">
+                  A campaign is a code that takes money off a place or a shop
+                  order while it runs. Live campaigns appear on the landing page
+                  within the second, and every code is re-checked on the server
+                  at checkout, so pausing one stops it everywhere at once.
+                </p>
+                <div className="mt-8">
+                  <ConsoleCampaigns />
+                </div>
+              </div>
             </TabsContent>
 
             <TabsContent value="shop" className="animate-rise mt-10">

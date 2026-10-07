@@ -380,6 +380,15 @@ html[data-palette="colour-blind"].dark {
     color: var(--status-neutral);
   }
 
+  /* A quiet panel in the "settled" tone: a code that has been applied, an
+     order that has been paid. Built from the same token as the dot, so it
+     follows the colour-blind palette too. */
+  .note-open {
+    border-color: color-mix(in oklch, var(--status-open) 34%, transparent);
+    background-color: color-mix(in oklch, var(--status-open) 10%, var(--card));
+    color: color-mix(in oklch, var(--status-open) 74%, var(--foreground));
+  }
+
   /* A small rounded label: categories, tiers, payment methods. */
   .chip {
     display: inline-flex;

@@ -101,6 +101,13 @@ export const sponsorshipStatusValidator = v.union(
 );
 export type SponsorshipStatus = Infer<typeof sponsorshipStatusValidator>;
 
+/** A promotion takes a percentage off, or a fixed sum. */
+export const campaignKindValidator = v.union(
+  v.literal("percent"),
+  v.literal("amount"),
+);
+export type CampaignKind = Infer<typeof campaignKindValidator>;
+
 const schema = defineSchema(
   {
     // default auth tables using convex auth.
@@ -176,6 +183,8 @@ const schema = defineSchema(
       paymentStatus: paymentStatusValidator,
       paymentMethod: v.optional(paymentMethodValidator),
       amountPaid: v.number(), // minor units actually settled
+      promoCode: v.optional(v.string()), // campaign code applied, if any
+      discount: v.optional(v.number()), // minor units taken off by the code
       reference: v.string(), // booking reference shown to the customer
       createdAt: v.number(),
     })
@@ -245,6 +254,8 @@ const schema = defineSchema(
         }),
       ),
       subtotal: v.number(),
+      promoCode: v.optional(v.string()), // campaign code applied, if any
+      discount: v.optional(v.number()), // minor units taken off by the code
       country: v.string(), // the market the order was placed from
       paymentMethod: paymentMethodValidator,
       paymentStatus: paymentStatusValidator,
@@ -292,6 +303,41 @@ const schema = defineSchema(
       .index("by_event", ["eventId"])
       .index("by_user", ["userId"])
       .index("by_event_user", ["eventId", "userId"]),
+
+    /**
+     * A promotion in flight: a code that takes money off a place or a shop
+     * order, inside a window, optionally capped by how many times it may be
+     * used. A campaign sits on a programme, or on one event inside it.
+     */
+    campaigns: defineTable({
+      festId: v.id("fests"),
+      eventId: v.optional(v.id("events")),
+      code: v.string(), // stored uppercase
+      title: v.string(),
+      blurb: v.optional(v.string()),
+      kind: campaignKindValidator,
+      value: v.number(), // percent when kind is percent, minor units otherwise
+      startsAt: v.number(),
+      endsAt: v.number(),
+      maxUses: v.optional(v.number()),
+      uses: v.number(),
+      active: v.boolean(),
+      createdAt: v.number(),
+    })
+      .index("by_fest", ["festId"])
+      .index("by_event", ["eventId"])
+      .index("by_code", ["code"]),
+
+    /** A note from the contact page, kept with the reference we quote back. */
+    messages: defineTable({
+      name: v.string(),
+      email: v.string(),
+      topic: v.string(),
+      subject: v.optional(v.string()),
+      body: v.string(),
+      reference: v.string(),
+      createdAt: v.number(),
+    }).index("by_created", ["createdAt"]),
   },
   {
     schemaValidation: false,

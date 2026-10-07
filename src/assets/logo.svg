@@ -1,1 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 96.81 96.81"><rect width="96.81" height="96.81" rx="21"/><g fill="#fff"><rect x="26.4" y="28.2" width="44.01" height="6.1" rx="3.05"/><rect x="26.4" y="45.35" width="30.5" height="6.1" rx="3.05"/><rect x="26.4" y="62.5" width="17.6" height="6.1" rx="3.05"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="512" height="512" role="img" aria-label="Memorius">
+  <defs>
+    <linearGradient id="memorius-tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#316274" />
+      <stop offset="0.55" stop-color="#24505F" />
+      <stop offset="1" stop-color="#1B3B49" />
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="22" fill="url(#memorius-tile)" />
+  <g fill="#FFFFFF" fill-opacity="0.96">
+    <rect x="26" y="28" width="44" height="6" rx="3" />
+    <rect x="26" y="45" width="30" height="6" rx="3" />
+  </g>
+  <rect x="26" y="62" width="16" height="6" rx="3" fill="#F0B67F" />
+</svg>

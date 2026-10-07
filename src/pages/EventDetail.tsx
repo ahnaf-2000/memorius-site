@@ -1,4 +1,8 @@
 import { EventList, StatusDot } from "@/components/site/EventList";
+import {
+  PromoCodeField,
+  type AppliedPromo,
+} from "@/components/site/PromoCodeField";
 import { EventReviews } from "@/components/site/EventReviews";
 import { EventShop } from "@/components/site/EventShop";
 import { EventSponsors } from "@/components/site/EventSponsors";
@@ -164,8 +168,11 @@ function BookingPanel({
     status: string;
     paymentStatus: string;
     amountPaid: number;
+    discount: number;
+    promoCode: string | null;
     bookingId: Id<"registrations">;
   } | null>(null);
+  const [promo, setPromo] = useState<AppliedPromo | null>(null);
 
   // Fields read from the account until the customer edits them. Deriving this
   // during render keeps the prefill out of an effect.
@@ -207,12 +214,15 @@ function BookingPanel({
         fullName,
         email,
         paymentMethod: payable ? method : undefined,
+        promoCode: promo?.code,
       });
       setReceipt({
         reference: result.reference,
         status: result.status,
         paymentStatus: result.paymentStatus,
         amountPaid: result.amountPaid,
+        discount: result.discount,
+        promoCode: result.promoCode,
         bookingId: result.bookingId,
       });
       toast.success(
@@ -241,10 +251,16 @@ function BookingPanel({
     }
   }
 
+  // Once there is a booking its own figure is the truth; before that, the code
+  // on screen is. Either way the customer reads the number they will be charged.
+  const discountApplied =
+    reference !== null ? (receipt?.discount ?? 0) : (promo?.discount ?? 0);
+  const totalDue = Math.max(0, event.price - discountApplied);
+
   function paymentLine() {
     if (paymentStatus === "waived") return "No charge";
     if (paymentStatus === "paid") return `${formatMoney(amountPaid)} paid`;
-    return `${formatMoney(event.price)} due on the day`;
+    return `${formatMoney(totalDue)} due on the day`;
   }
 
   return (
@@ -307,6 +323,14 @@ function BookingPanel({
               <CreditCard className="size-3.5" />
               {paymentLine()}
             </p>
+            {discountApplied > 0 && (
+              <p className="note-open mt-3 flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-[11px]">
+                <BadgeCheck className="size-3.5" />
+                {receipt?.promoCode ?? activeBooking?.promoCode ?? promo?.code}
+                {" "}
+                took {formatMoney(discountApplied)} off
+              </p>
+            )}
           </div>
 
           <div className="mt-5 flex flex-col gap-2">
@@ -498,17 +522,38 @@ function BookingPanel({
                 label="Price per place"
                 value={priceLabel(event.price)}
               />
-              <div className="mt-3 flex items-baseline justify-between gap-6">
+              {discountApplied > 0 && (
+                <div className="mt-3 flex items-baseline justify-between gap-6">
+                  <dt className="text-[13px] text-muted-foreground">
+                    {promo?.code ?? receipt?.promoCode ?? "Promotion"}
+                  </dt>
+                  <dd className="text-tone-open text-[13px] tabular-nums">
+                    −{formatMoney(discountApplied)}
+                  </dd>
+                </div>
+              )}
+              <motion.div
+                key={totalDue}
+                initial={{ opacity: 0, y: -3 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: EASE }}
+                className="mt-3 flex items-baseline justify-between gap-6"
+              >
                 <dt className="text-[13px] font-medium">Total</dt>
                 <dd className="font-display text-[18px] tabular-nums">
-                  {priceLabel(event.price)}
+                  {formatMoney(totalDue)}
                 </dd>
-              </div>
+              </motion.div>
             </div>
           </dl>
 
           {payable ? (
             <div className="space-y-2.5">
+              <PromoCodeField
+                subtotal={event.price}
+                applied={promo}
+                onApply={setPromo}
+              />
               <p className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
                 Payment
               </p>
@@ -540,12 +585,12 @@ function BookingPanel({
             {isFull
               ? "Join the waiting list"
               : payable && method !== "on-site"
-                ? `Pay ${formatMoney(event.price)} and confirm`
+                ? `Pay ${formatMoney(totalDue)} and confirm`
                 : "Confirm booking"}
           </Button>
           <p className="text-center text-[11px] text-muted-foreground">
             {payable && method === "on-site"
-              ? `${formatMoney(event.price)} stays due until the event.`
+              ? `${formatMoney(totalDue)} stays due until the event.`
               : "A reference appears immediately after you confirm."}
           </p>
         </form>

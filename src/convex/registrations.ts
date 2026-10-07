@@ -8,6 +8,7 @@ import {
   requireUserId,
   seatState,
 } from "./model";
+import { countUse, resolveDiscount } from "./campaigns";
 import { paymentMethodValidator as methodValidator } from "./schema";
 
 /** Everything except settling at the desk is taken as settled on the spot. */
@@ -32,6 +33,7 @@ export const book = mutation({
     organization: v.optional(v.string()),
     notes: v.optional(v.string()),
     paymentMethod: v.optional(methodValidator),
+    promoCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
@@ -53,13 +55,21 @@ export const book = mutation({
 
     const price = event.price;
     const method = price === 0 ? undefined : (args.paymentMethod ?? "bkash");
+    // A promotion is resolved on the server, from the code alone — the client
+    // never states what the discount is.
+    const promo =
+      price === 0 || !args.promoCode
+        ? null
+        : await resolveDiscount(ctx, { code: args.promoCode, subtotal: price });
+    const discount = promo?.discount ?? 0;
+    const total = Math.max(0, price - discount);
     const paymentStatus =
       price === 0
         ? "waived"
         : settlesImmediately(method ?? "bkash")
           ? "paid"
           : "due";
-    const amountPaid = paymentStatus === "paid" ? price : 0;
+    const amountPaid = paymentStatus === "paid" ? total : 0;
     const status =
       event.seatsTaken >= event.capacity ? "waitlisted" : "confirmed";
 
@@ -71,12 +81,17 @@ export const book = mutation({
       .unique();
 
     if (existing !== null && existing.status !== "cancelled") {
+      // Same shape as a fresh booking, so the interface never has to guess which
+      // fields exist: an existing place simply carries no new discount.
       return {
         alreadyBooked: true,
         bookingId: existing._id,
         status: existing.status,
         paymentStatus: existing.paymentStatus,
         amountPaid: existing.amountPaid,
+        discount: existing.discount ?? 0,
+        total: existing.amountPaid,
+        promoCode: existing.promoCode ?? null,
         reference: existing.reference,
         placesRemaining: Math.max(0, event.capacity - event.seatsTaken),
       };
@@ -93,12 +108,15 @@ export const book = mutation({
         paymentStatus,
         paymentMethod: method,
         amountPaid,
+        promoCode: promo?.code,
+        discount,
         reference: makeReference(),
         createdAt: Date.now(),
       });
       if (status === "confirmed") {
         await ctx.db.patch(event._id, { seatsTaken: event.seatsTaken + 1 });
       }
+      if (promo !== null) await countUse(ctx, promo.campaign._id);
       const refreshed = await ctx.db.get(existing._id);
       return {
         alreadyBooked: false,
@@ -106,6 +124,9 @@ export const book = mutation({
         status,
         paymentStatus,
         amountPaid,
+        discount,
+        total,
+        promoCode: promo?.code ?? null,
         reference: refreshed?.reference ?? "",
         placesRemaining: Math.max(
           0,
@@ -128,6 +149,8 @@ export const book = mutation({
       paymentStatus,
       paymentMethod: method,
       amountPaid,
+      promoCode: promo?.code,
+      discount,
       reference,
       createdAt: Date.now(),
     });
@@ -135,6 +158,7 @@ export const book = mutation({
     if (status === "confirmed") {
       await ctx.db.patch(event._id, { seatsTaken: event.seatsTaken + 1 });
     }
+    if (promo !== null) await countUse(ctx, promo.campaign._id);
 
     return {
       alreadyBooked: false,
@@ -142,6 +166,9 @@ export const book = mutation({
       status,
       paymentStatus,
       amountPaid,
+      discount,
+      total,
+      promoCode: promo?.code ?? null,
       reference,
       placesRemaining: Math.max(
         0,

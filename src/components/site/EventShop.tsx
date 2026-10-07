@@ -1,4 +1,8 @@
 import { MethodPicker, TestModeNote } from "@/components/site/PaymentMethods";
+import {
+  PromoCodeField,
+  type AppliedPromo,
+} from "@/components/site/PromoCodeField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,8 +63,11 @@ export function EventShop({
   const [receipt, setReceipt] = useState<{
     reference: string;
     subtotal: number;
+    discount: number;
+    promoCode: string | null;
     paymentStatus: string;
   } | null>(null);
+  const [promo, setPromo] = useState<AppliedPromo | null>(null);
 
   const rows = products ?? [];
   const lines = rows
@@ -71,6 +78,11 @@ export function EventShop({
     (sum, line) => sum + line.product.price * line.quantity,
     0,
   );
+  // A code can only take money off what is actually in the basket, so the
+  // preview is recalculated here and re-checked on the server at checkout.
+  const applied = promo === null ? null : { ...promo, discount: Math.min(promo.discount, subtotal) };
+  const discount = applied?.discount ?? 0;
+  const total = Math.max(0, subtotal - discount);
 
   function step(product: ProductView, delta: number) {
     setBasket((previous) => {
@@ -100,13 +112,17 @@ export function EventShop({
         fullName: form.fullName,
         email: form.email,
         country: country.code,
+        promoCode: promo?.code,
       });
       setReceipt({
         reference: result.reference,
         subtotal: result.subtotal,
+        discount: result.discount,
+        promoCode: result.promoCode,
         paymentStatus: result.paymentStatus,
       });
       setBasket({});
+      setPromo(null);
       setOpen(false);
       toast.success("Order placed", {
         description: `Reference ${result.reference} · collect at the desk`,
@@ -244,9 +260,15 @@ export function EventShop({
               <p className="mt-1 text-[12px] text-muted-foreground">
                 Total{" "}
                 <span className="font-medium text-foreground tabular-nums">
-                  {formatMoney(subtotal)}
+                  {formatMoney(total)}
                 </span>{" "}
-                · collected from the desk on the day
+                {discount > 0 ? (
+                  <span className="text-tone-open">
+                    — {formatMoney(discount)} off with {applied?.code}
+                  </span>
+                ) : (
+                  "· collected from the desk on the day"
+                )}
               </p>
             </div>
             <Button
@@ -302,6 +324,12 @@ export function EventShop({
                     </div>
                   </div>
 
+                  <PromoCodeField
+                    subtotal={subtotal}
+                    applied={applied}
+                    onApply={setPromo}
+                  />
+
                   <MethodPicker value={method} onChange={setMethod} />
                   <TestModeNote />
 
@@ -315,7 +343,7 @@ export function EventShop({
                     ) : (
                       <BadgeCheck className="size-4" />
                     )}
-                    Place order · {formatMoney(subtotal)}
+                    Place order · {formatMoney(total)}
                   </Button>
                 </form>
               ) : (
@@ -354,8 +382,13 @@ export function EventShop({
               {receipt.reference}
             </span>
             <span className="text-[13px] text-muted-foreground tabular-nums">
-              {formatMoney(receipt.subtotal)}
+              {formatMoney(receipt.subtotal - receipt.discount)}
             </span>
+            {receipt.discount > 0 && (
+              <span className="text-tone-open text-[11px]">
+                {receipt.promoCode} took {formatMoney(receipt.discount)} off
+              </span>
+            )}
           </div>
         </div>
       )}

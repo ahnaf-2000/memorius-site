@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { countUse, resolveDiscount } from "./campaigns";
 import { makeReference, requireUserId } from "./model";
 import { paymentMethodValidator, productKindValidator } from "./schema";
 
@@ -147,6 +148,7 @@ export const checkout = mutation({
     fullName: v.string(),
     email: v.string(),
     country: v.string(),
+    promoCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
@@ -182,6 +184,11 @@ export const checkout = mutation({
       (sum, line) => sum + line.product.price * line.quantity,
       0,
     );
+    const promo = args.promoCode
+      ? await resolveDiscount(ctx, { code: args.promoCode, subtotal })
+      : null;
+    const discount = promo?.discount ?? 0;
+    const total = Math.max(0, subtotal - discount);
     const paid = settlesImmediately(args.paymentMethod);
     const reference = makeReference();
 
@@ -200,7 +207,9 @@ export const checkout = mutation({
       country: args.country,
       paymentMethod: args.paymentMethod,
       paymentStatus: paid ? "paid" : "due",
-      amountPaid: paid ? subtotal : 0,
+      amountPaid: paid ? total : 0,
+      promoCode: promo?.code,
+      discount,
       reference,
       fullName,
       email,
@@ -213,11 +222,15 @@ export const checkout = mutation({
         sold: line.product.sold + line.quantity,
       });
     }
+    if (promo !== null) await countUse(ctx, promo.campaign._id);
 
     return {
       orderId,
       reference,
       subtotal,
+      discount,
+      total,
+      promoCode: promo?.code ?? null,
       paymentStatus: paid ? ("paid" as const) : ("due" as const),
       lineCount: prepared.length,
     };

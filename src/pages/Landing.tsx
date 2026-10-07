@@ -3,6 +3,7 @@ import { EventSlideshow } from "@/components/site/EventSlideshow";
 import { PAYMENT_OPTIONS } from "@/components/site/PaymentMethods";
 import { StatusDot } from "@/components/site/EventList";
 import { ProgrammeCard } from "@/components/site/FestCard";
+import { PromoBand } from "@/components/site/PromoBand";
 import { SectionHeading } from "@/components/site/SectionHeading";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
@@ -18,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import { useCountUp } from "@/hooks/use-count-up";
 import { useEnsureSeeded } from "@/hooks/use-seed";
+import { INTRO_PART_MS, introPlays } from "@/lib/intro";
 import {
   dayParts,
   formatTimeRange,
@@ -43,6 +45,7 @@ import {
   Ticket,
   TrendingUp,
 } from "lucide-react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
@@ -148,11 +151,17 @@ function Reveal({
   delay?: number;
   className?: string;
 }) {
+  // When the opening sequence is about to play, the hero holds its own entrance
+  // until the panels have parted — otherwise it would arrive behind a curtain
+  // and the first thing anyone sees would already be finished.
+  const [offset] = useState(() =>
+    introPlays() ? INTRO_PART_MS / 1000 - 0.2 : 0,
+  );
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.7, delay, ease: EASE }}
+      transition={{ duration: 0.8, delay: offset + delay, ease: EASE }}
       className={className}
     >
       {children}
@@ -321,7 +330,7 @@ export default function Landing() {
                   variant="outline"
                   className="rounded-full border-border px-3 py-1 text-[11px] font-normal tracking-[0.08em] text-muted-foreground uppercase"
                 >
-                  Events, merchandise, sponsorship — one place
+                  Events, merchandise, sponsorship, promotions — one place
                 </Badge>
               </Reveal>
 
@@ -383,6 +392,9 @@ export default function Landing() {
             </Reveal>
           </div>
         </section>
+
+        {/* Promotions in flight */}
+        <PromoBand />
 
         {/* Three ways in */}
         <section className="band-brand border-t border-border">

@@ -117,6 +117,8 @@ export function publicBooking(booking: Doc<"registrations">) {
     paymentStatus: booking.paymentStatus,
     paymentMethod: booking.paymentMethod ?? null,
     amountPaid: booking.amountPaid,
+    promoCode: booking.promoCode ?? null,
+    discount: booking.discount ?? 0,
     reference: booking.reference,
     createdAt: booking.createdAt,
     fullName: booking.fullName,

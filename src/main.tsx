@@ -1,8 +1,10 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
 import { AssistantDock } from "@/components/site/AssistantDock";
+import { EasterEggs } from "@/components/site/EasterEggs";
 import { OpeningIntro } from "@/components/site/OpeningIntro";
 import { PageTransition } from "@/components/site/PageTransition";
+import { ScrollProgress } from "@/components/site/ScrollProgress";
 import { RequireAuth } from "@/components/RequireAuth";
 import { usePersonaSync } from "@/hooks/use-profile";
 import { useActiveCountry } from "@/lib/pricing";
@@ -23,6 +25,7 @@ const ProgrammeDetail = lazy(() => import("./pages/ProgrammeDetail.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const Admin = lazy(() => import("./pages/Admin.tsx"));
+const Contact = lazy(() => import("./pages/Contact.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -161,6 +164,7 @@ function AppRoutes() {
                 </RequireAuth>
               }
             />
+            <Route path="/contact" element={<Contact />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </PageTransition>
@@ -202,6 +206,8 @@ createRoot(document.getElementById("root")!).render(
           <AssistantDock />
           <OpeningIntro />
         </BrowserRouter>
+        <ScrollProgress />
+        <EasterEggs />
         <Toaster />
       </ConvexAuthProvider>
     </RootErrorBoundary>

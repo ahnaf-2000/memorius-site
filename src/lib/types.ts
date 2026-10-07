@@ -85,6 +85,8 @@ export interface BookingView {
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod | null;
   amountPaid: number;
+  promoCode: string | null;
+  discount: number;
   reference: string;
   createdAt: number;
   fullName: string;
@@ -106,6 +108,8 @@ export interface GuestView {
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod | null;
   amountPaid: number;
+  promoCode: string | null;
+  discount: number;
   reference: string;
   createdAt: number;
 }
