@@ -30,7 +30,9 @@ import {
 import type { EventListItem, ProgrammeListItem } from "@/lib/types";
 import { useQuery } from "convex/react";
 import {
+  AnimatePresence,
   motion,
+  useCycle,
   useMotionValue,
   useReducedMotion,
   useSpring,
@@ -80,6 +82,36 @@ const FLOW = [
     title: "Booking",
     copy: "A held place, a payment record, and a line on your own schedule.",
   },
+];
+
+const COMET_ICONS = [
+  Sparkles,
+  Star,
+  Ticket,
+  Handshake,
+  Globe,
+  ShoppingBag,
+  CalendarCheck,
+  TrendingUp,
+  GaugeCircle,
+  Building2,
+  Layers3,
+  ArrowRight,
+];
+
+const COMET_DISPLAY_NAMES = [
+  "Sparkles",
+  "Star",
+  "Ticket",
+  "Handshake",
+  "Globe",
+  "ShoppingBag",
+  "CalendarCheck",
+  "TrendingUp",
+  "GaugeCircle",
+  "Building2",
+  "Layers3",
+  "ArrowRight",
 ];
 
 const FEATURES = [
@@ -298,8 +330,7 @@ function FloatChip(props: {
       aria-hidden="true"
       className={cn(
         "absolute z-10 hidden items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] text-muted-foreground shadow-lift backdrop-blur-sm lg:flex",
-        props.className,
-      )}
+        props.className              ,          )}}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={
         reduced
@@ -398,7 +429,7 @@ function NextEventCard({ event }: { event: EventListItem }) {
               <dt className="shrink-0 text-muted-foreground">{label}</dt>
               <dd className="truncate text-right">{value}</dd>
             </div>
-          ))}
+          )}
           <div className="flex items-baseline justify-between gap-6">
             <dt className="shrink-0 text-muted-foreground">Availability</dt>
             <dd className="flex items-center gap-2">
@@ -449,6 +480,162 @@ function DemandRow({ event }: { event: EventListItem }) {
   );
 }
 
+function FeatureCard({
+  feature,
+  index,
+}: {
+  feature: typeof FEATURES[number];
+  index: number;
+}) {
+  const reduced = useReducedMotion();
+  return (
+    <motion.div
+      initial={reduced ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.98 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{
+        duration: reduced ? 0 : 0.55,
+        delay: reduced ? 0 : index * 0.06,
+        ease: EASE,
+      }}
+      className="group h-full rounded-lg border border-border bg-card p-6 shadow-hairline transition-colors hover:border-foreground/15"
+    >
+      <span
+        className={cn(
+          "icon-chip transition-transform duration-500 ease-quint group-hover:-rotate-6 group-hover:scale-110",
+          feature.tint,
+        )}
+      >
+        <feature.icon className="size-4" />
+      </span>
+      <h3 className="mt-5 text-[15px] font-medium tracking-[-0.015em]">
+        {feature.title}
+      </h3>
+      <p className="mt-2.5 text-[12.5px] leading-6 text-muted-foreground">
+        {feature.copy}
+      </p>
+    </motion.div>
+  );
+}
+
+function FeatureDetail({
+  strip = false,
+}: {
+  strip?: boolean;
+}) {
+  const reduced = useReducedMotion();
+  const [key, cycle] = useCycle(COMET_DISPLAY_NAMES);
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-brand-line/40 bg-brand-soft/20 px-5 py-5",
+        strip ? "mt-12" : "mt-12"              ,          )}}
+    >
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={key}
+          initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduced ? { opacity: 0 } : { opacity: 0, y: -8 }}
+          transition={{
+            duration: reduced ? 0 : 0.4,
+            ease: EASE,
+          }}
+          className="flex items-center justify-center gap-4 text-center"
+        >
+          <span className="label-eyebrow text-brand">Fun fact</span>
+          <span className="text-[13px] font-medium tracking-[-0.01em] text-foreground">
+            Did you know Memorius lets a single event carry a shop, a snack counter and a sponsorship pitch all at once?
+          </span>
+          <span
+            className={cn(
+              "chip chip-plum text-[11px] font-normal tracking-[0.04em]",
+              reduced ? "opacity-70" : "animate-pulse",
+            )}
+          >
+            Now you know
+          </span>
+        </motion.div>
+      </AnimatePresence>
+
+      <div
+        className={cn(
+          "relative mt-5 flex h-10 w-full overflow-hidden rounded-full bg-brand-soft/40",
+          reduced && "opacity-0",
+        )}
+      >
+        <div className="absolute inset-0 flex items-center justify-center gap-6 py-1.5">                {Array.from({ length: 12 }).map(
+            (_, i) => (
+              <motion.section
+                key={String(i)}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: i * 0.04 }}
+                className="flex items-center gap-2 text-[11px] text-brand"
+              >
+                <span className="rounded-full bg-brand/20 px-2 py-0.5 text-[9px] tracking-wider uppercase">
+                  {FEATURES[i % FEATURES.length].title.split(" ")[0]}
+                </span>
+              </motion.section>
+            )}}
+        </div>
+        <motion.div
+          animate={reduced ? undefined : { x: [0, 100] }}
+          transition={{
+            x: {
+              repeat: Infinity,
+              repeatType: "loop",
+              duration: 24,
+              ease: "linear",
+            },
+          }}
+          className="absolute inset-y-0 left-0 w-[200%] bg-gradient-to-r from-transparent via-brand-soft/40 to-transparent"
+        />
+      </div>
+        <motion.div
+          animate={reduced ? undefined : { x: [0, 100] }}
+          transition={{
+            x: {
+              repeat: Infinity,
+              repeatType: "loop",
+              duration: 24,
+              ease: "linear",
+            },
+          }}
+          className="absolute inset-y-0 left-0 w-[200%] bg-gradient-to-r from-transparent via-brand-soft/40 to-transparent"
+        />
+      </div>
+    </div>
+  );
+}
+
+function CometStream(
+{
+  chipIcon,
+  reduced,
+  key,
+}: {
+  chipIcon: ReactNode;
+  reduced: boolean;
+  key: string;
+}) {
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={key}
+        initial={reduced ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.85 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={reduced ? { opacity: 0 } : { opacity: 0, y: -10, scale: 0.9 }}
+        transition={{ duration: reduced ? 0 : 0.55, ease: EASE }}
+        className="absolute -right-3 top-20 z-0 h-7 w-7"
+      >
+        {chipIcon}
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 export default function Landing() {
   useEnsureSeeded();
   const events = useQuery(api.events.list);
@@ -474,6 +661,9 @@ export default function Landing() {
     .slice(0, 3);
 
   const loaded = events !== undefined;
+
+  // The secret intro sequence plays its part reveal before the hero appears.
+  const introRevealId = introPlays() ? INTRO_PART_MS : undefined;
   const marqueeWords = Array.from(
     new Set([
       "Conferences",
@@ -485,8 +675,16 @@ export default function Landing() {
       "Pay your way",
       "Sponsor a season",
     ]),
-  );
+  ) as string[];
 
+  const reduced = useReducedMotion() ?? false;
+  const cometIconBase: ReactNode = reduced
+    ? <Sparkles className={"size-7 text-brand opacity-70"} />
+    : <Sparkles className={"size-7 text-brand"} />;
+
+  const cometKey = cometKeyFromReveal();
+  // Frame the comet as a small dot.
+  const cometIcon: ReactNode = cometIconBase;
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
@@ -586,6 +784,7 @@ export default function Landing() {
                   <Handshake className="size-3 text-plum" />
                   Sponsor in four tiers
                 </FloatChip>
+                <CometStream chipIcon={cometIcon} reduced={reduced} key={cometKey} />
                 {nextEvent === undefined ? (
                   <Skeleton className="h-[440px] w-full rounded-lg" />
                 ) : (
@@ -669,7 +868,7 @@ export default function Landing() {
                   </Button>
                 </div>
                 </Rise>
-              ))}
+              )}
             </div>
           </div>
         </section>
@@ -766,7 +965,7 @@ export default function Landing() {
                       key={programme._id}
                       programme={programme}
                     />
-                  ))}
+                  )}
             </div>
           </div>
         </section>
@@ -782,7 +981,7 @@ export default function Landing() {
             <div className="mt-12 grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
               {FLOW.map((step, index) => (
                 <Rise key={step.index} delay={index * 0.06}>
-                <div className="bg-background px-0 pt-8 sm:px-7 sm:pt-10 sm:first:pl-0 sm:last:pr-0">
+                  <div className="bg-background px-0 pt-8 sm:px-7 sm:pt-10 sm:first:pl-0 sm:last:pr-0">
                   <span className="font-display text-[15px] text-brand tabular-nums">
                     {step.index}
                   </span>
@@ -794,7 +993,7 @@ export default function Landing() {
                   </p>
                 </div>
                 </Rise>
-              ))}
+              )}
             </div>
           </div>
         </section>
@@ -845,7 +1044,7 @@ export default function Landing() {
                         </p>
                       </div>
                     </li>
-                  ))}
+                  )}
                 </ul>
 
                 <Button
@@ -896,48 +1095,34 @@ export default function Landing() {
         </section>
 
         {/* Everything included */}
-        <section className="band-warm border-t border-border">
+        <section className="band-warm relative overflow-hidden border-t border-border">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 -top-9 h-32 bg-gradient-to-b from-transparent via-brand-soft/30 to-transparent"
+          />
           <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
             <SectionHeading
               eyebrow="Everything included"
               title="The parts other platforms charge extra for, already in."
               description="Selling, sponsorship, feedback, payments and a price that knows where the customer is — all inside the same calendar."
             />
-            <div className="mt-10 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-              {FEATURES.map((feature, index) => (
-                <Rise
-                  key={feature.title}
-                  delay={index * 0.05}
-                  className="h-full"
-                >
-                <div className="group h-full bg-card p-6">
-                  <span
-                    className={cn(
-                      "icon-chip transition-transform duration-500 ease-quint group-hover:-rotate-6 group-hover:scale-110",
-                      feature.tint,
-                    )}
-                  >
-                    <feature.icon className="size-4" />
-                  </span>
-                  <h3 className="mt-5 text-[15px] font-medium tracking-[-0.015em]">
-                    {feature.title}
-                  </h3>
-                  <p className="mt-2.5 text-[12.5px] leading-6 text-muted-foreground">
-                    {feature.copy}
-                  </p>
-                </div>
-                </Rise>
-              ))}
+
+            <div className="mt-12 grid gap-5 md:grid-cols-2">              {FEATURES.map((feature, index) => (
+                <FeatureCard key={feature.title} feature={feature} index={index} />
+              )}
+
+
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center gap-2">
-              <span className="label-eyebrow mr-1">Pay with</span>
-              {PAYMENT_OPTIONS.map((option) => (
-                <span key={option.id} className={cn("chip", option.tint)}>
-                  {option.name}
-                </span>
-              ))}
+            <div className="mt-12 flex flex-wrap items-center gap-3 rounded-xl border border-brand-line/40 bg-brand-soft/20 px-5 py-5">
+              <span className="label-eyebrow mr-1 text-brand">Also inside</span>
+              <span className="chip chip-cool">{PAYMENT_OPTIONS[0].name}</span>
+              <span className="chip chip-warm">{PAYMENT_OPTIONS[1].name}</span>
+              <span className="chip chip-plum">{PAYMENT_OPTIONS[2].name}</span>
+              <span className="chip chip-cool">{PAYMENT_OPTIONS[3].name}</span>
             </div>
+
+            <FeatureDetail strip />
           </div>
         </section>
 
@@ -958,7 +1143,7 @@ export default function Landing() {
                     {item.a}
                   </AccordionContent>
                 </AccordionItem>
-              ))}
+              )}
             </Accordion>
           </div>
         </section>
