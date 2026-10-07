@@ -8,6 +8,16 @@ import { SectionHeading } from "@/components/site/SectionHeading";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import {
+  Celebrate,
+  CometRail,
+  Magnetic,
+  ParticleField,
+  SpotlightCard,
+  SplitWords,
+  celebrate,
+  type RailItem,
+} from "@/components/site/LiveMotion";
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -32,7 +42,6 @@ import { useQuery } from "convex/react";
 import {
   AnimatePresence,
   motion,
-  useCycle,
   useMotionValue,
   useReducedMotion,
   useSpring,
@@ -53,6 +62,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import {
+  useEffect,
   useState,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -84,19 +94,68 @@ const FLOW = [
   },
 ];
 
-const COMET_DISPLAY_NAMES = [
-  "Sparkles",
-  "Star",
-  "Ticket",
-  "Handshake",
-  "Globe",
-  "ShoppingBag",
-  "CalendarCheck",
-  "TrendingUp",
-  "GaugeCircle",
-  "Building2",
-  "Layers3",
-  "ArrowRight",
+/** Facts that take turns inside the features band. */
+const FACTS = [
+  {
+    label: "Shop on site",
+    copy: "One event carries places, merchandise and a snack counter in the same checkout.",
+  },
+  {
+    label: "Four tiers",
+    copy: "Sponsorship attaches to a whole programme or a single night, from Community to Lead partner.",
+  },
+  {
+    label: "One ledger",
+    copy: "Money taken, promised and still due are three columns on one screen, never three exports.",
+  },
+  {
+    label: "One vote each",
+    copy: "Reviews are one per attendee and averaged onto the event card, in the open.",
+  },
+  {
+    label: "Any market",
+    copy: "Prices follow the visitor's country, so the same event reads in taka, dollars or pounds.",
+  },
+  {
+    label: "Never stuck",
+    copy: "A full event takes a waiting list and promotes the next name the moment a place is released.",
+  },
+];
+
+/** Four claims that orbit the hero card, on a slow shared clock. */
+const HERO_ORBIT = [
+  { icon: Ticket, tint: "var(--brand)" },
+  { icon: Handshake, tint: "var(--plum)" },
+  { icon: ShoppingBag, tint: "var(--warm)" },
+  { icon: Sparkles, tint: "var(--cool)" },
+];
+
+/** Second marquee row: the promises, kept short enough to read sideways. */
+const VOICES = [
+  "Two fields and a click",
+  "No shared inbox",
+  "Waiting lists promote themselves",
+  "One ledger for places and shop",
+  "Prices in your market",
+  "Rated by the room",
+  "Sponsors see where it went",
+  "Memo answers day or night",
+];
+
+/** The twelve small things hidden in the easter-egg rail. */
+const EASTER_EGGS: RailItem[] = [
+  { name: "A shop cart", icon: ShoppingBag, tint: "var(--warm)" },
+  { name: "Four tiers", icon: Handshake, tint: "var(--plum)" },
+  { name: "One rating", icon: Star, tint: "var(--brand)" },
+  { name: "One ledger", icon: TrendingUp, tint: "var(--cool)" },
+  { name: "Local prices", icon: Globe, tint: "var(--brand)" },
+  { name: "Memo", icon: Sparkles, tint: "var(--warm)" },
+  { name: "Waiting list", icon: CalendarCheck, tint: "var(--cool)" },
+  { name: "Six payment rails", icon: Ticket, tint: "var(--warm)" },
+  { name: "Live occupancy", icon: GaugeCircle, tint: "var(--brand)" },
+  { name: "Many programmes", icon: Layers3, tint: "var(--plum)" },
+  { name: "A business page", icon: Building2, tint: "var(--cool)" },
+  { name: "One-tap booking", icon: ArrowRight, tint: "var(--warm)" },
 ];
 
 const FEATURES = [
@@ -324,20 +383,33 @@ function FloatChip(props: {
 }
 
 /** Marquee of words that never stops moving. */
-function Marquee({ words }: { words: string[] }) {
+function Marquee({
+  words,
+  reverse = false,
+  tone = "warm",
+}: {
+  words: string[];
+  reverse?: boolean;
+  tone?: "warm" | "plum";
+}) {
   const doubled = [...words, ...words];
   return (
     <div
       aria-hidden="true"
       className="marquee overflow-hidden border-y border-border bg-card/60 py-3.5"
     >
-      <div className="marquee-track flex w-max items-center">
+      <div
+        className="marquee-track flex w-max items-center"
+        style={reverse ? { animationDirection: "reverse" } : undefined}
+      >
         {doubled.map((word, index) => (
           <span key={index} className="flex items-center whitespace-nowrap">
             <span className="font-display px-4 text-[13px] tracking-[0.02em] text-muted-foreground">
               {word}
             </span>
-            <span className="text-[9px] text-warm">✦</span>
+            <span className={cn("text-[9px]", tone === "plum" ? "text-plum" : "text-warm")}>
+              ✦
+            </span>
           </span>
         ))}
       </div>
@@ -435,8 +507,12 @@ function DemandRow({ event }: { event: EventListItem }) {
         </span>
       </div>
       <div className="mt-3 h-px w-full bg-border">
-        <div
-          className="h-px bg-foreground/45 transition-[width] duration-700 ease-quint"
+        <motion.div
+          initial={{ scaleX: 0 }}
+          whileInView={{ scaleX: 1 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 1.1, ease: EASE }}
+          className="h-px origin-left bg-foreground/45"
           style={{ width: `${claimed}%` }}
         />
       </div>
@@ -444,6 +520,20 @@ function DemandRow({ event }: { event: EventListItem }) {
   );
 }
 
+/** Which companion tint belongs to a feature chip. */
+function tintOf(tint: string): string {
+  if (tint === "icon-chip-warm") return "var(--warm)";
+  if (tint === "icon-chip-plum") return "var(--plum)";
+  if (tint === "icon-chip-cool") return "var(--cool)";
+  return "var(--brand)";
+}
+
+/**
+ * A feature card with three things happening at once when the pointer is on
+ * it: the surface leans toward the cursor and carries a light that follows,
+ * the icon sits inside a slowly turning dashed ring, and the rule under the
+ * copy draws itself in.
+ */
 function FeatureCard({
   feature,
   index,
@@ -452,139 +542,236 @@ function FeatureCard({
   index: number;
 }) {
   const reduced = useReducedMotion();
+  const [active, setActive] = useState(false);
+  const tint = tintOf(feature.tint);
+
   return (
     <motion.div
-      key={feature.title}
-      initial={reduced ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.98 }}
+      initial={reduced ? { opacity: 0 } : { opacity: 0, y: 26, scale: 0.95 }}
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
-      viewport={{ once: true, margin: "-60px" }}
+      viewport={{ once: true, margin: "-70px" }}
       transition={{
-        duration: reduced ? 0 : 0.55,
-        delay: reduced ? 0 : index * 0.06,
+        duration: reduced ? 0 : 0.7,
+        delay: reduced ? 0 : index * 0.07,
         ease: EASE,
       }}
-      className="group h-full rounded-lg border border-border bg-card p-6 shadow-hairline transition-colors hover:border-foreground/15"
+      onHoverStart={() => setActive(true)}
+      onHoverEnd={() => setActive(false)}
+      className="h-full"
     >
-      <span
-        className={cn(
-          "icon-chip transition-transform duration-500 ease-quint group-hover:-rotate-6 group-hover:scale-110",
-          feature.tint,
-        )}
+      <SpotlightCard
+        tint={tint}
+        className="h-full rounded-lg border border-border bg-card p-6 shadow-hairline transition-colors hover:border-foreground/20"
       >
-        <feature.icon className="size-4" />
-      </span>
-      <h3 className="mt-5 text-[15px] font-medium tracking-[-0.015em]">
-        {feature.title}
-      </h3>
-      <p className="mt-2.5 text-[12.5px] leading-6 text-muted-foreground">
-        {feature.copy}
-      </p>
+        <div className="flex items-start justify-between gap-4">
+          <span className="relative inline-grid place-items-center">
+            <motion.span
+              aria-hidden="true"
+              className="pointer-events-none absolute -inset-1.5 rounded-xl border border-dashed"
+              style={{ borderColor: `color-mix(in oklch, ${tint} 34%, transparent)` }}
+              animate={
+                active && !reduced
+                  ? { rotate: 360, opacity: 1 }
+                  : { rotate: 0, opacity: 0 }
+              }
+              transition={
+                active && !reduced
+                  ? {
+                      rotate: { repeat: Infinity, duration: 9, ease: "linear" },
+                      opacity: { duration: 0.3 },
+                    }
+                  : { duration: 0.35 }
+              }
+            />
+            <span
+              className={cn(
+                "icon-chip transition-transform duration-500 ease-quint group-hover:-rotate-6 group-hover:scale-110",
+                feature.tint,
+              )}
+            >
+              <feature.icon className="size-4" />
+            </span>
+          </span>
+          <span className="font-display text-[13px] tabular-nums text-muted-foreground/70">
+            {String(index + 1).padStart(2, "0")}
+          </span>
+        </div>
+
+        <h3 className="mt-5 text-[15px] font-medium tracking-[-0.015em]">
+          {feature.title}
+        </h3>
+        <p className="mt-2.5 text-[12.5px] leading-6 text-muted-foreground">
+          {feature.copy}
+        </p>
+        <span
+          aria-hidden="true"
+          className="mt-5 block h-px w-full origin-left scale-x-0 bg-brand/30 transition-transform duration-700 ease-quint group-hover:scale-x-100"
+        />
+      </SpotlightCard>
     </motion.div>
   );
 }
 
-function FeatureDetail({
-  strip = false,
-}: {
-  strip?: boolean;
-}) {
+/**
+ * A line of claims that takes turns in place: the facts are short, the
+ * rotation is slow, and the dots are also buttons for anyone who would
+ * rather hold the page still.
+ */
+function FactStrip() {
   const reduced = useReducedMotion();
-  const [key, cycle] = useCycle(COMET_DISPLAY_NAMES);
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (reduced) return;
+    const id = window.setInterval(
+      () => setIndex((current) => (current + 1) % FACTS.length),
+      5200,
+    );
+    return () => window.clearInterval(id);
+  }, [reduced]);
+
+  const fact = FACTS[index];
 
   return (
-    <div
-      className={cn(
-        "rounded-xl border border-brand-line/40 bg-brand-soft/20 px-5 py-5 mt-12",
-        strip ? "mt-12" : "mt-12",
-      )}
-    >
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={key}
-          initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={reduced ? { opacity: 0 } : { opacity: 0, y: -8 }}
-          transition={{
-            duration: reduced ? 0 : 0.4,
-            ease: EASE,
-          }}
-          className="flex items-center justify-center gap-4 text-center"
-        >
-          <span className="label-eyebrow text-brand">Fun fact</span>
-          <span className="text-[13px] font-medium tracking-[-0.01em] text-foreground">
-            Did you know Memorius lets a single event carry a shop, a snack counter and a sponsorship pitch all at once?
-          </span>
-          <span
-            className={cn(
-              "chip chip-plum text-[11px] font-normal tracking-[0.04em]",
-              reduced ? "opacity-70" : "animate-pulse",
-            )}
-          >
-            Now you know
-          </span>
-        </motion.div>
-      </AnimatePresence>
-
-      <div
-        className={cn(
-          "relative mt-5 flex h-10 w-full overflow-hidden rounded-full bg-brand-soft/40",
-          reduced && "opacity-0",
-        )}
-      >
-        <div className="absolute inset-0 flex items-center justify-center gap-6 py-1.5">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <motion.section
-              key={String(i)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: i * 0.04 }}
-              className="flex items-center gap-2 text-[11px] text-brand"
-            >
-              <span className="rounded-full bg-brand/20 px-2 py-0.5 text-[9px] tracking-wider uppercase">
-                {FEATURES[i % FEATURES.length].title.split(" ")[0]}
-              </span>
-            </motion.section>
+    <div className="mt-12 overflow-hidden rounded-xl border border-brand-line/40 bg-brand-soft/20 px-5 py-6">
+      <div className="flex items-center justify-between gap-4">
+        <span className="label-eyebrow text-brand">Fun fact</span>
+        <div className="flex items-center gap-1.5">
+          {FACTS.map((item, dot) => (
+            <button
+              key={item.label}
+              type="button"
+              aria-label={`Show: ${item.label}`}
+              onClick={() => setIndex(dot)}
+              className={cn(
+                "h-1 rounded-full transition-all duration-500 ease-quint",
+                dot === index ? "w-7 bg-brand" : "w-2.5 bg-brand/25 hover:bg-brand/50",
+              )}
+            />
           ))}
         </div>
-        <motion.div
-          animate={reduced ? undefined : { x: [0, 100] }}
-          transition={{
-            x: {
-              repeat: Infinity,
-              repeatType: "loop",
-              duration: 24,
-              ease: "linear",
-            },
-          }}
-          className="absolute inset-y-0 left-0 w-[200%] bg-gradient-to-r from-transparent via-brand-soft/40 to-transparent"
-        />
+      </div>
+
+      <div className="relative mt-4 min-h-[4.5rem]">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={fact.label}
+            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 14, filter: "blur(6px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={reduced ? { opacity: 0 } : { opacity: 0, y: -14, filter: "blur(6px)" }}
+            transition={{ duration: reduced ? 0 : 0.5, ease: EASE }}
+            className="flex flex-wrap items-baseline gap-x-4 gap-y-2"
+          >
+            <span className="font-display text-[20px] leading-none">
+              {fact.label}
+            </span>
+            <span className="max-w-2xl text-[13px] leading-6 text-muted-foreground">
+              {fact.copy}
+            </span>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
 }
 
-function CometStream({
-  chipIcon,
-  reduced,
-  key,
-}: {
-  chipIcon: ReactNode;
-  reduced: boolean;
-  key: string;
-}) {
+/**
+ * Four chips orbiting the hero card. The ring turns, each icon counter-turns
+ * so it stays upright, and the whole thing is hidden below lg where there is
+ * no room for it.
+ */
+function OrbitCluster() {
+  const reduced = useReducedMotion();
+
   return (
-    <AnimatePresence mode="wait">
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute -bottom-10 -left-8 hidden size-44 lg:block"
+    >
       <motion.div
-        key={key}
-        initial={reduced ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.85 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={reduced ? { opacity: 0 } : { opacity: 0, y: -10, scale: 0.9 }}
-        transition={{ duration: reduced ? 0 : 0.55, ease: EASE }}
-        className="absolute -right-3 top-20 z-0 h-7 w-7"
+        className="relative size-full"
+        animate={reduced ? undefined : { rotate: 360 }}
+        transition={{ duration: 48, repeat: Infinity, ease: "linear" }}
       >
-        {chipIcon}
+        {HERO_ORBIT.map((item, index) => {
+          const angle = (index / HERO_ORBIT.length) * Math.PI * 2;
+          return (
+            <span
+              key={index}
+              className="absolute grid size-9 place-items-center rounded-full border border-border bg-card/90 shadow-lift backdrop-blur-sm"
+              style={{
+                top: `${50 + 42 * Math.sin(angle)}%`,
+                left: `${50 + 42 * Math.cos(angle)}%`,
+                transform: "translate(-50%, -50%)",
+                color: item.tint,
+              }}
+            >
+              <motion.span
+                animate={reduced ? undefined : { rotate: -360 }}
+                transition={{ duration: 48, repeat: Infinity, ease: "linear" }}
+                className="grid place-items-center"
+              >
+                <item.icon className="size-4" />
+              </motion.span>
+            </span>
+          );
+        })}
       </motion.div>
-    </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * A small ticker of activity for the demand panel: one event at a time, the
+ * way a booking desk reads. It uses the live rows, so it can only ever say
+ * something the catalogue already says.
+ */
+function LivePulse({ events }: { events: EventListItem[] }) {
+  const reduced = useReducedMotion();
+  const [index, setIndex] = useState(0);
+  const count = events.length;
+
+  useEffect(() => {
+    if (reduced || count === 0) return;
+    const id = window.setInterval(
+      () => setIndex((current) => (current + 1) % count),
+      4200,
+    );
+    return () => window.clearInterval(id);
+  }, [reduced, count]);
+
+  if (count === 0) {
+    return (
+      <span className="text-[12px] text-muted-foreground">
+        Updated as bookings arrive
+      </span>
+    );
+  }
+
+  const event = events[index % count];
+
+  return (
+    <span className="relative flex min-h-5 items-center gap-2 text-[12px] text-muted-foreground">
+      <span className="relative grid size-2 place-items-center">
+        <span className="tone-open absolute size-1.5 rounded-full" />
+        <span className="tone-open absolute size-1.5 animate-halo rounded-full" />
+      </span>
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={`${event._id}-${index}`}
+          initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduced ? { opacity: 0 } : { opacity: 0, y: -8 }}
+          transition={{ duration: reduced ? 0 : 0.35, ease: EASE }}
+          className="truncate"
+        >
+          <span className="tabular-nums">
+            {event.seatsTaken}/{event.capacity}
+          </span>{" "}
+          taken at {event.title}
+        </motion.span>
+      </AnimatePresence>
+    </span>
   );
 }
 
@@ -613,13 +800,12 @@ export default function Landing() {
     .slice(0, 3);
 
   const loaded = events !== undefined;
-
   const reduced = useReducedMotion() ?? false;
-  const cometIcon: ReactNode = reduced
-    ? <Sparkles className={"size-7 text-brand opacity-70"} />
-    : <Sparkles className={"size-7 text-brand"} />;
 
-  const cometKey = reduced ? "Sparkles" : COMET_DISPLAY_NAMES[0];
+  // The hero waits for the opening sequence to part before it arrives.
+  const [heroDelay] = useState(() =>
+    introPlays() ? INTRO_PART_MS / 1000 - 0.2 : 0,
+  );
 
   const marqueeWords = Array.from(
     new Set([
@@ -657,6 +843,7 @@ export default function Landing() {
             aria-hidden="true"
             className="drift-b pointer-events-none absolute top-44 -left-12 size-64 rounded-full bg-warm/20 blur-3xl"
           />
+          <ParticleField className="inset-x-[-6%] top-[-4rem] h-[calc(100%+6rem)] w-[112%] opacity-80" />
           <div className="relative grid gap-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-20">
             <div>
               <Reveal>
@@ -670,11 +857,14 @@ export default function Landing() {
 
               <Reveal delay={0.06}>
                 <h1 className="mt-8 text-[44px] leading-[1.02] font-medium tracking-[-0.04em] text-balance sm:text-[62px]">
-                  Find your next event, and{" "}
+                  <SplitWords text="Find your next event, and" delay={heroDelay} />{" "}
                   <em className="font-display font-normal italic">
                     <Swash>book it</Swash>
                   </em>{" "}
-                  in a minute.
+                  <SplitWords
+                    text="in a minute."
+                    delay={heroDelay + 0.38}
+                  />
                 </h1>
               </Reveal>
 
@@ -688,24 +878,28 @@ export default function Landing() {
 
               <Reveal delay={0.18}>
                 <div className="mt-10 flex flex-wrap items-center gap-3">
-                  <Button
-                    asChild
-                    size="lg"
-                    className="sheen h-11 gap-2 rounded-full px-6 text-[14px]"
-                  >
-                    <Link to="/events">
-                      Browse the catalogue
-                      <ArrowRight className="size-4" />
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    size="lg"
-                    variant="outline"
-                    className="h-11 rounded-full border-border px-6 text-[14px] shadow-none"
-                  >
-                    <Link to="/admin">For businesses</Link>
-                  </Button>
+                  <Magnetic>
+                    <Button
+                      asChild
+                      size="lg"
+                      className="sheen h-11 gap-2 rounded-full px-6 text-[14px]"
+                    >
+                      <Link to="/events">
+                        Browse the catalogue
+                        <ArrowRight className="size-4" />
+                      </Link>
+                    </Button>
+                  </Magnetic>
+                  <Magnetic pull={0.08}>
+                    <Button
+                      asChild
+                      size="lg"
+                      variant="outline"
+                      className="h-11 rounded-full border-border px-6 text-[14px] shadow-none"
+                    >
+                      <Link to="/admin">For businesses</Link>
+                    </Button>
+                  </Magnetic>
                 </div>
               </Reveal>
 
@@ -733,7 +927,7 @@ export default function Landing() {
                   <Handshake className="size-3 text-plum" />
                   Sponsor in four tiers
                 </FloatChip>
-                <CometStream chipIcon={cometIcon} reduced={reduced} key={cometKey} />
+                <OrbitCluster />
                 {nextEvent === undefined ? (
                   <Skeleton className="h-[440px] w-full rounded-lg" />
                 ) : (
@@ -744,9 +938,34 @@ export default function Landing() {
               </div>
             </Reveal>
           </div>
+
+          {/* A quiet cue that the page keeps going, for anyone who needs it. */}
+          <motion.div
+            aria-hidden="true"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: heroDelay + 1.4, duration: 0.9 }}
+            className="pointer-events-none absolute inset-x-0 bottom-4 hidden justify-center lg:flex"
+          >
+            <span className="flex flex-col items-center gap-2 text-[10px] tracking-[0.22em] text-muted-foreground uppercase">
+              Scroll
+              <span className="relative block h-10 w-px overflow-hidden bg-border">
+                <motion.span
+                  className="absolute inset-x-0 top-0 h-4 bg-brand"
+                  animate={reduced ? undefined : { y: [-18, 44] }}
+                  transition={{
+                    duration: 2.4,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                />
+              </span>
+            </span>
+          </motion.div>
         </section>
 
         <Marquee words={marqueeWords} />
+        <Marquee words={VOICES} reverse tone="plum" />
 
         {/* Promotions in flight */}
         <PromoBand />
@@ -786,37 +1005,58 @@ export default function Landing() {
                   cta: "Back an event",
                 },
               ].map((role, index) => (
-                <Rise key={role.title} delay={index * 0.08} className="h-full">
-                  <div className="group surface-card flex h-full flex-col justify-between rounded-lg border border-border bg-card p-6 shadow-hairline hover:border-foreground/15">
-                    <div>
-                      <span
-                        className={cn(
-                          "icon-chip transition-transform duration-500 ease-quint group-hover:-rotate-6 group-hover:scale-110",
-                          role.tint,
-                        )}
-                      >
-                        <role.icon className="size-4" />
-                      </span>
-                      <h3 className="mt-5 text-[17px] font-medium tracking-[-0.02em]">
-                        {role.title}
-                      </h3>
-                      <p className="mt-3 text-[13px] leading-6 text-muted-foreground">
-                        {role.copy}
-                      </p>
+                <motion.div
+                  key={role.title}
+                  initial={{ opacity: 0, y: 24, scale: 0.96 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  viewport={{ once: true, margin: "-70px" }}
+                  transition={{
+                    duration: 0.7,
+                    delay: index * 0.09,
+                    ease: EASE,
+                  }}
+                  className="h-full"
+                >
+                  <SpotlightCard
+                    tint={tintOf(role.tint)}
+                    className="h-full rounded-lg border border-border bg-card p-6 shadow-hairline"
+                  >
+                    <div className="flex h-full flex-col justify-between">
+                      <div>
+                        <motion.span
+                          whileHover={
+                            reduced
+                              ? undefined
+                              : { rotate: [0, -8, 6, 0], scale: 1.08 }
+                          }
+                          transition={{ duration: 0.5 }}
+                          className={cn("icon-chip", role.tint)}
+                        >
+                          <role.icon className="size-4" />
+                        </motion.span>
+                        <h3 className="mt-5 text-[17px] font-medium tracking-[-0.02em]">
+                          {role.title}
+                        </h3>
+                        <p className="mt-3 text-[13px] leading-6 text-muted-foreground">
+                          {role.copy}
+                        </p>
+                      </div>
+                      <Magnetic pull={0.08}>
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="group mt-7 h-9 w-fit gap-1.5 rounded-full border-border px-4 text-[13px] shadow-none"
+                        >
+                          <Link to={role.to}>
+                            {role.cta}
+                            <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                          </Link>
+                        </Button>
+                      </Magnetic>
                     </div>
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className="mt-7 h-9 w-fit gap-1.5 rounded-full border-border px-4 text-[13px] shadow-none"
-                    >
-                      <Link to={role.to}>
-                        {role.cta}
-                        <ArrowRight className="size-3.5" />
-                      </Link>
-                    </Button>
-                  </div>
-                </Rise>
+                  </SpotlightCard>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -927,22 +1167,48 @@ export default function Landing() {
               title="Four steps, in this order, every time."
               description="The structure that keeps a calendar legible: a business runs programmes, a programme holds events, an event takes bookings."
             />
-            <div className="mt-12 grid gap-px border-t border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-              {FLOW.map((step, index) => (
-                <Rise key={step.index} delay={index * 0.06}>
-                  <div className="bg-background px-0 pt-8 sm:px-7 sm:pt-10 sm:first:pl-0 sm:last:pr-0">
-                    <span className="font-display text-[15px] text-brand tabular-nums">
-                      {step.index}
-                    </span>
-                    <h3 className="mt-5 text-[17px] font-medium tracking-[-0.02em]">
-                      {step.title}
-                    </h3>
-                    <p className="mt-3 max-w-xs text-[13px] leading-6 text-muted-foreground">
-                      {step.copy}
-                    </p>
-                  </div>
-                </Rise>
-              ))}
+            {/* One rule is drawn across the four steps, then each node pops in
+                behind it, so the order is legible before any copy is read. */}
+            <div className="relative mt-12">
+              <motion.span
+                aria-hidden="true"
+                initial={{ scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 1.2, ease: EASE }}
+                className="absolute inset-x-0 top-[7px] hidden h-px origin-left bg-gradient-to-r from-brand/60 via-border to-border lg:block"
+              />
+              <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+                {FLOW.map((step, index) => (
+                  <Rise key={step.index} delay={index * 0.08}>
+                    <div className="group relative">
+                      <motion.span
+                        initial={{ scale: 0, opacity: 0 }}
+                        whileInView={{ scale: 1, opacity: 1 }}
+                        viewport={{ once: true, margin: "-80px" }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 320,
+                          damping: 18,
+                          delay: 0.15 + index * 0.16,
+                        }}
+                        className="relative z-10 grid size-[15px] place-items-center rounded-full border border-border bg-background"
+                      >
+                        <span className="size-1.5 rounded-full bg-brand transition-transform duration-500 ease-quint group-hover:scale-150" />
+                      </motion.span>
+                      <span className="font-display mt-5 block text-[15px] text-brand tabular-nums">
+                        {step.index}
+                      </span>
+                      <h3 className="mt-2 text-[17px] font-medium tracking-[-0.02em]">
+                        {step.title}
+                      </h3>
+                      <p className="mt-3 max-w-xs text-[13px] leading-6 text-muted-foreground">
+                        {step.copy}
+                      </p>
+                    </div>
+                  </Rise>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -1029,11 +1295,11 @@ export default function Landing() {
                     ))
                   )}
                 </div>
-                <div className="flex items-center justify-between border-t border-border px-6 py-4 text-[12px] text-muted-foreground">
-                  <span>Updated as bookings arrive</span>
+                <div className="flex items-center justify-between gap-4 border-t border-border px-6 py-4">
+                  <LivePulse events={mostInDemand} />
                   <Link
                     to="/programmes"
-                    className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+                    className="text-[12px] text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
                   >
                     Browse programmes
                   </Link>
@@ -1054,7 +1320,8 @@ export default function Landing() {
               eyebrow="Everything included"
               title="The parts other platforms charge extra for, already in."
               description="Selling, sponsorship, feedback, payments and a price that knows where the customer is — all inside the same calendar."
-            />            <div className="mt-12 grid gap-5 md:grid-cols-2">
+            />
+            <div className="mt-12 grid gap-5 md:grid-cols-2">
               {FEATURES.map((feature, index) => (
                 <FeatureCard
                   key={feature.title}
@@ -1064,15 +1331,34 @@ export default function Landing() {
               ))}
             </div>
 
-            <div className="mt-12 flex flex-wrap items-center gap-3 rounded-xl border border-brand-line/40 bg-brand-soft/20 px-5 py-5">
+            <div className="mt-12 flex flex-wrap items-center gap-3">
               <span className="label-eyebrow mr-1 text-brand">Also inside</span>
-              <span className="chip chip-cool">{PAYMENT_OPTIONS[0].name}</span>
-              <span className="chip chip-warm">{PAYMENT_OPTIONS[1].name}</span>
-              <span className="chip chip-plum">{PAYMENT_OPTIONS[2].name}</span>
-              <span className="chip chip-cool">{PAYMENT_OPTIONS[3].name}</span>
+              {PAYMENT_OPTIONS.slice(0, 4).map((option, index) => (
+                <Magnetic key={option.name} pull={0.07}>
+                  <span
+                    className={cn(
+                      "chip chip-tinted",
+                      index % 3 === 0
+                        ? "chip-cool"
+                        : index % 3 === 1
+                          ? "chip-warm"
+                          : "chip-plum",
+                    )}
+                  >
+                    {option.name}
+                  </span>
+                </Magnetic>
+              ))}
+              {PAYMENT_OPTIONS.length > 4 && (
+                <span className="text-[12px] text-muted-foreground">
+                  and {PAYMENT_OPTIONS.length - 4} more at the desk
+                </span>
+              )}
             </div>
 
-            <FeatureDetail strip />
+            <FactStrip />
+
+            <CometRail items={EASTER_EGGS} />
           </div>
         </section>
 
@@ -1105,24 +1391,32 @@ export default function Landing() {
             className="breathe glow-soft pointer-events-none absolute inset-x-0 top-0 h-72"
           />
           <div className="relative mx-auto w-full max-w-6xl px-5 py-24 text-center sm:px-8 sm:py-32">
-            <h2 className="font-display mx-auto max-w-3xl text-[34px] leading-[1.12] tracking-[-0.02em] text-balance sm:text-[46px]">
+            <motion.h2
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ type: "spring", stiffness: 170, damping: 20 }}
+              className="font-display mx-auto max-w-3xl text-[34px] leading-[1.12] tracking-[-0.02em] text-balance sm:text-[46px]"
+            >
               Take your place in <em className="italic">under a minute</em>.
-            </h2>
+            </motion.h2>
             <p className="mx-auto mt-6 max-w-xl text-[14px] leading-7 text-muted-foreground">
               Create an account once, and every booking after it takes two
               fields and a click.
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-              <Button
-                asChild
-                size="lg"
-                className="sheen h-11 gap-2 rounded-full px-6 text-[14px]"
-              >
-                <Link to="/auth?returnTo=%2Fevents">
-                  Create your account
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
+              <Magnetic>
+                <Button
+                  asChild
+                  size="lg"
+                  className="sheen h-11 gap-2 rounded-full px-6 text-[14px]"
+                >
+                  <Link to="/auth?returnTo=%2Fevents">
+                    Create your account
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              </Magnetic>
               <Button
                 asChild
                 size="lg"
@@ -1132,11 +1426,41 @@ export default function Landing() {
                 <Link to="/events">Keep browsing</Link>
               </Button>
             </div>
+
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-[12px] text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => celebrate({ count: 96 })}
+                className="inline-flex items-center gap-2 rounded-full border border-border px-3.5 py-1.5 transition-colors hover:border-foreground/25 hover:text-foreground"
+              >
+                <motion.span
+                  aria-hidden="true"
+                  animate={
+                    reduced ? undefined : { rotate: [0, 20, -14, 0], scale: [1, 1.15, 1] }
+                  }
+                  transition={{ duration: 3.4, repeat: Infinity, repeatDelay: 1.6 }}
+                  className="text-warm"
+                >
+                  ✦
+                </motion.span>
+                Toss some confetti
+              </button>
+              <span>
+                or spell{" "}
+                <kbd className="rounded border border-border bg-card px-1.5 py-0.5 font-sans text-[11px] tracking-[0.14em]">
+                  memorius
+                </kbd>{" "}
+                anywhere on the page
+              </span>
+            </div>
           </div>
         </section>
       </main>
 
       <SiteFooter />
+
+      {/* One layer for confetti: any control on the page can ask for a burst. */}
+      <Celebrate />
     </div>
   );
 }

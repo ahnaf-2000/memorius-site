@@ -1,3 +1,4 @@
+import { celebrate } from "@/components/site/LiveMotion";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -50,6 +51,7 @@ export function EasterEggs() {
       typed.current = (typed.current + key).slice(-SECRET.length);
       if (typed.current === SECRET && !found.current.has("name")) {
         found.current.add("name");
+        celebrate({ count: 150 });
         toast("You spelt it", {
           description:
             "The opening sequence is yours to replay whenever you like.",
@@ -68,6 +70,7 @@ export function EasterEggs() {
         !found.current.has("konami")
       ) {
         found.current.add("konami");
+        celebrate({ count: 90 });
         toast("Thirty lives, no waiting list", {
           description:
             "The code still works. Every seat here is a front-row seat anyway.",
