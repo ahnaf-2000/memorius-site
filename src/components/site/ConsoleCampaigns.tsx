@@ -17,7 +17,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { CampaignState } from "@/convex/campaigns";
 import { errorMessage, pluralize } from "@/lib/format";
-import { fromLocalAmount, useActiveCountry } from "@/lib/pricing";
+import { fromLocalAmount, useActiveCurrency } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
 import { format } from "date-fns";
@@ -84,7 +84,7 @@ function StartCampaignDialog({
   events: { _id: Id<"events">; title: string; festId: Id<"fests"> }[];
 }) {
   const create = useMutation(api.campaigns.create);
-  const country = useActiveCountry();
+  const currency = useActiveCurrency();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [festId, setFestId] = useState<Id<"fests"> | null>(
@@ -113,7 +113,7 @@ function StartCampaignDialog({
     const value =
       kind === "percent"
         ? Number.parseInt(form.value, 10)
-        : fromLocalAmount(Number.parseFloat(form.value), country);
+        : fromLocalAmount(Number.parseFloat(form.value), currency);
     setPending(true);
     try {
       const now = Date.now();
@@ -231,7 +231,7 @@ function StartCampaignDialog({
               >
                 {kind === "percent"
                   ? "Percent off"
-                  : `Amount off (${country.currency})`}
+                  : `Amount off (${currency.currency})`}
               </Label>
               <Input
                 id="campaign-value"

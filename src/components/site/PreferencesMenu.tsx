@@ -11,9 +11,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { PALETTES, THEMES, useTheme } from "@/hooks/use-theme";
 import {
   COUNTRIES,
+  CURRENCIES,
   countryByCode,
+  hasChosenCurrency,
   setActiveCountry,
+  setActiveCurrency,
   useActiveCountry,
+  useActiveCurrency,
 } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import { useMutation } from "convex/react";
@@ -85,17 +89,37 @@ export function ThemeToggle() {
 export function PreferencesMenu() {
   const { theme, setTheme, palette, setPalette } = useTheme();
   const country = useActiveCountry();
+  const currency = useActiveCurrency();
   const { isAuthenticated } = useAuth();
   const save = useMutation(api.profiles.save);
+
+  /** Remember the choice on the account as well, whenever there is one. */
+  function remember(next: { country: string; currency: string }) {
+    if (!isAuthenticated) return;
+    void save(next).catch(() => {
+      // The display switch still applies even if the write fails.
+    });
+  }
 
   function chooseCountry(code: string) {
     const next = countryByCode(code);
     setActiveCountry(code);
-    if (isAuthenticated) {
-      void save({ country: next.code, currency: next.currency }).catch(() => {
-        // The display switch still applies even if the write fails.
-      });
-    }
+    // The region only moves the currency when none was chosen, so save whichever
+    // of the two choices is actually in force.
+    remember({
+      country: next.code,
+      currency: hasChosenCurrency() ? currency.code : next.currency,
+    });
+  }
+
+  /**
+   * The currency is chosen on its own here. Somebody in Germany may well prefer
+   * to be quoted in dollars, and once they have said so, it stays said — picking
+   * a region afterwards will not quietly move it back.
+   */
+  function chooseCurrency(code: string) {
+    setActiveCurrency(code);
+    remember({ country: country.code, currency: code });
   }
 
   return (
@@ -110,7 +134,7 @@ export function PreferencesMenu() {
           <span aria-hidden="true" className="text-[13px] leading-none">
             {country.flag}
           </span>
-          <span className="tabular-nums">{country.currency}</span>
+          <span className="tabular-nums">{currency.code}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72 p-2">
@@ -155,7 +179,23 @@ export function PreferencesMenu() {
 
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="px-2.5 text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
-          Prices in
+          Currency
+        </DropdownMenuLabel>
+        <div className="max-h-64 overflow-y-auto pr-1">
+          {CURRENCIES.map((option) => (
+            <MenuRow
+              key={option.code}
+              selected={currency.code === option.code}
+              title={`${option.flag}  ${option.code}`}
+              detail={option.name}
+              onClick={() => chooseCurrency(option.code)}
+            />
+          ))}
+        </div>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="px-2.5 text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
+          Region
         </DropdownMenuLabel>
         <div className="max-h-64 overflow-y-auto pr-1">
           {COUNTRIES.map((option) => (
@@ -163,15 +203,15 @@ export function PreferencesMenu() {
               key={option.code}
               selected={country.code === option.code}
               title={`${option.flag}  ${option.name}`}
-              detail={`${option.currency} · prices quoted locally`}
+              detail={`Numbers written as ${option.locale}`}
               onClick={() => chooseCountry(option.code)}
             />
           ))}
         </div>
         <p className="px-2.5 pt-2 text-[11px] leading-5 text-muted-foreground">
-          We start with the market your location points to. Choose one above and
-          it is kept — amounts are converted from the programme's own currency
-          at an indicative rate.
+          We start with the currency your location points to. Pick one and it is
+          kept, whatever you later do with your region — amounts are converted
+          from the programme's own currency at an indicative rate.
         </p>
       </DropdownMenuContent>
     </DropdownMenu>

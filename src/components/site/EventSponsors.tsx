@@ -8,7 +8,11 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@/hooks/use-auth";
 import { errorMessage, formatMoney } from "@/lib/format";
-import { fromLocalAmount, toLocalAmount, useActiveCountry } from "@/lib/pricing";
+import {
+  fromLocalAmount,
+  toLocalAmount,
+  useActiveCurrency,
+} from "@/lib/pricing";
 import type {
   PaymentMethod,
   SponsorshipTier,
@@ -61,7 +65,7 @@ export function EventSponsors({
     | undefined;
   const pledge = useMutation(api.sponsorships.pledge);
   const { user, isAuthenticated } = useAuth();
-  const country = useActiveCountry();
+  const currency = useActiveCurrency();
 
   const [open, setOpen] = useState(false);
   const [tier, setTier] = useState<SponsorshipTier>("silver");
@@ -79,7 +83,7 @@ export function EventSponsors({
   const typedAmount = Number.parseFloat(amount);
   const effectiveLocal =
     amount.trim() === ""
-      ? toLocalAmount(tierAmount, country)
+      ? toLocalAmount(tierAmount, currency)
       : Number.isFinite(typedAmount)
         ? typedAmount
         : 0;
@@ -88,7 +92,7 @@ export function EventSponsors({
     event.preventDefault();
     setPending(true);
     try {
-      const baseAmount = fromLocalAmount(effectiveLocal, country);
+      const baseAmount = fromLocalAmount(effectiveLocal, currency);
       if (baseAmount <= 0) {
         throw new Error("Enter the amount you would like to pledge.");
       }
@@ -304,7 +308,7 @@ export function EventSponsors({
                       htmlFor="sponsor-amount"
                       className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase"
                     >
-                      Amount ({country.currency})
+                      Amount ({currency.currency})
                     </Label>
                     <Input
                       id="sponsor-amount"
@@ -353,7 +357,7 @@ export function EventSponsors({
                   ) : (
                     <Handshake className="size-4" />
                   )}
-                  Pledge {formatMoney(fromLocalAmount(effectiveLocal, country))}
+                  Pledge {formatMoney(fromLocalAmount(effectiveLocal, currency))}
                 </Button>
               </form>
             )}

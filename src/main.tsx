@@ -11,9 +11,11 @@ import { api } from "@/convex/_generated/api";
 import { detectCountry } from "@/lib/geo";
 import {
   applyDetectedCountry,
+  applyDetectedCurrency,
   hasChosenCountry,
   isKnownCountry,
-  useActiveCountry,
+  isKnownCurrency,
+  useActiveCurrency,
 } from "@/lib/pricing";
 import type { ProfileView } from "@/lib/types";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
@@ -213,13 +215,16 @@ function GeoDefaults() {
     if (profile === undefined) return;
     settled.current = true;
 
-    const saved = profile?.country ?? null;
-    if (isKnownCountry(saved)) {
-      applyDetectedCountry(saved);
-      return;
-    }
+    // An account can carry both a region and a currency, and they are applied
+    // independently: the currency decides what a price says, the region decides
+    // how the number is written.
+    const savedCountry = profile?.country ?? null;
+    const savedCurrency = profile?.currency ?? null;
+    if (isKnownCountry(savedCountry)) applyDetectedCountry(savedCountry);
+    if (isKnownCurrency(savedCurrency)) applyDetectedCurrency(savedCurrency);
+    if (isKnownCountry(savedCountry)) return;
 
-    // No saved preference to honour: ask the IP, quietly, and let it go.
+    // Nothing saved to honour: ask the IP, quietly, and let it go.
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), 2500);
     void detectCountry(controller.signal)
@@ -238,9 +243,9 @@ function GeoDefaults() {
  * means a conversation survives a change of country.
  */
 function PricedRoutes() {
-  const country = useActiveCountry();
+  const currency = useActiveCurrency();
   return (
-    <Fragment key={country.code}>
+    <Fragment key={currency.code}>
       <AppRoutes />
     </Fragment>
   );

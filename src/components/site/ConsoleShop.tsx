@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { errorMessage, formatMoney } from "@/lib/format";
-import { fromLocalAmount, useActiveCountry } from "@/lib/pricing";
+import { fromLocalAmount, useActiveCurrency } from "@/lib/pricing";
 import type { ManagedProductView, ProductKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
@@ -25,7 +25,7 @@ import { toast } from "sonner";
 
 function AddProductDialog({ eventId }: { eventId: Id<"events"> }) {
   const create = useMutation(api.shop.create);
-  const country = useActiveCountry();
+  const currency = useActiveCurrency();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [kind, setKind] = useState<ProductKind>("merchandise");
@@ -40,7 +40,7 @@ function AddProductDialog({ eventId }: { eventId: Id<"events"> }) {
     event.preventDefault();
     setPending(true);
     try {
-      const price = fromLocalAmount(Number.parseFloat(form.price), country);
+      const price = fromLocalAmount(Number.parseFloat(form.price), currency);
       await create({
         eventId,
         name: form.name,
@@ -131,7 +131,7 @@ function AddProductDialog({ eventId }: { eventId: Id<"events"> }) {
                 htmlFor="product-price"
                 className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase"
               >
-                Price ({country.currency})
+                Price ({currency.currency})
               </Label>
               <Input
                 id="product-price"
