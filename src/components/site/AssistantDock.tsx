@@ -4,18 +4,15 @@ import type { ChatTurn } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAction, useQuery } from "convex/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import {
-  ArrowUpRight,
-  Loader2,
-  MessagesSquare,
-  Send,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { MessagesSquare, Send, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
+
+/** The brand palette orbiting once: the shared flourish of the whole dock. */
+const RING =
+  "conic-gradient(from 0deg, var(--brand), var(--warm), var(--plum), var(--brand))";
 
 const OPENING: ChatTurn = {
   role: "assistant",
@@ -30,6 +27,82 @@ const SUGGESTIONS = [
   "How do I pay with bKash?",
   "Can my company sponsor?",
 ];
+
+/**
+ * The launcher is never hidden and never still: it breathes with the page,
+ * its brand ring turns slowly, its live dot pings. Memo is always on, and
+ * the launcher should look like it.
+ */
+function Launcher(props: { open: boolean; reduced: boolean; onToggle: () => void }) {
+  const { open, reduced, onToggle } = props;
+  return (
+    <motion.div
+      className="relative"
+      initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.7 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: "spring", stiffness: 320, damping: 20 }}
+    >
+      <motion.div
+        className="relative"
+        animate={reduced || open ? undefined : { y: [0, -3, 0] }}
+        transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }}
+      >
+        {!reduced && !open && (
+          <motion.span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-full border border-brand/50"
+            animate={{ scale: [1, 1.4], opacity: [0.55, 0] }}
+            transition={{ duration: 2.6, repeat: Infinity, ease: "easeOut" }}
+          />
+        )}
+        <motion.button
+          type="button"
+          onClick={onToggle}
+          aria-label={open ? "Close the assistant" : "Ask the assistant"}
+          whileHover={reduced ? undefined : { scale: 1.04 }}
+          whileTap={reduced ? undefined : { scale: 0.95 }}
+          className={cn(
+            "relative flex items-center gap-2 rounded-full border px-4 py-3 text-[13px] shadow-lift transition-colors",
+            open
+              ? "border-foreground/20 bg-foreground text-background"
+              : "border-brand-line bg-card text-foreground hover:border-brand",
+          )}
+        >
+          <span className="relative flex size-6 items-center justify-center">
+            {!reduced && !open && (
+              <motion.span
+                aria-hidden
+                className="absolute inset-0 rounded-full opacity-50 blur-[3px]"
+                style={{ background: RING }}
+                animate={{ rotate: 360 }}
+                transition={{ duration: 7, repeat: Infinity, ease: "linear" }}
+              />
+            )}
+            {open ? (
+              <X className="relative size-4" />
+            ) : (
+              <MessagesSquare className="relative size-4 text-brand" />
+            )}
+          </span>
+          <span className="hidden sm:inline">{open ? "Close" : "Ask Memo"}</span>
+          {!open && (
+            <span className="absolute -top-1 -right-1 flex size-3">
+              {!reduced && (
+                <motion.span
+                  aria-hidden
+                  className="tone-open absolute size-full rounded-full"
+                  animate={{ scale: [1, 2.2], opacity: [0.55, 0] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeOut" }}
+                />
+              )}
+              <span className="tone-open relative size-3 rounded-full ring-2 ring-background" />
+            </span>
+          )}
+        </motion.button>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 /**
  * The assistant, available on every page. It answers from the live catalogue,
@@ -108,46 +181,85 @@ export function AssistantDock() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.98 }}
+            key="memo-panel"
+            initial={
+              reduced ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.95 }
+            }
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={reduced ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.98 }}
-            transition={{ duration: reduced ? 0 : 0.32, ease: EASE }}
-            className="fixed right-4 bottom-24 z-50 flex max-h-[min(34rem,calc(100vh-8rem))] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-panel"
+            exit={
+              reduced ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.96 }
+            }
+            transition={
+              reduced
+                ? { duration: 0.15 }
+                : { type: "spring", stiffness: 340, damping: 27 }
+            }
+            className="fixed right-4 bottom-24 z-50 flex max-h-[min(34rem,calc(100vh-8rem))] w-[min(24rem,calc(100vw-2rem))] origin-bottom-right flex-col overflow-hidden rounded-xl border border-border bg-card shadow-panel"
             role="dialog"
             aria-label="Memorius assistant"
           >
             <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
-              <span className="icon-chip size-9">
-                <Sparkles className="size-4" />
+              <span className="relative flex size-9 shrink-0 items-center justify-center">
+                <motion.span
+                  aria-hidden
+                  className="absolute inset-0 rounded-full"
+                  style={{ background: RING }}
+                  animate={reduced ? undefined : { rotate: 360 }}
+                  transition={{
+                    duration: pending ? 1.3 : 9,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
+                />
+                <span className="absolute inset-[2px] rounded-full bg-card" />
+                <Sparkles className="relative size-4 text-brand" />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-medium tracking-[-0.012em]">
                   Memo, your assistant
                 </p>
                 <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                  {status === undefined
-                    ? "Connecting…"
-                    : configured
-                      ? `Answering with ${status.provider}`
-                      : "Catalogue mode — no model key yet"}
+                  {pending
+                    ? "Thinking…"
+                    : status === undefined
+                      ? "Connecting…"
+                      : configured
+                        ? `Answering with ${status.provider}`
+                        : "Catalogue mode — no model key yet"}
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Close assistant"
-                onClick={() => setOpen(false)}
-                className="rounded-full text-muted-foreground"
+              <motion.span
+                whileHover={reduced ? undefined : { rotate: 90 }}
+                className="rounded-full"
               >
-                <X className="size-4" />
-              </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Close assistant"
+                  onClick={() => setOpen(false)}
+                  className="rounded-full text-muted-foreground"
+                >
+                  <X className="size-4" />
+                </Button>
+              </motion.span>
             </div>
 
             <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
               {turns.map((turn, index) => (
-                <div
+                <motion.div
                   key={index}
+                  initial={
+                    reduced
+                      ? { opacity: 0 }
+                      : { opacity: 0, y: 10, scale: 0.98 }
+                  }
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{
+                    duration: 0.35,
+                    ease: EASE,
+                    delay: Math.min(index * 0.06, 0.3),
+                  }}
                   className={cn(
                     "flex",
                     turn.role === "user" ? "justify-end" : "justify-start",
@@ -168,28 +280,75 @@ export function AssistantDock() {
                       </span>
                     )}
                   </div>
-                </div>
+                </motion.div>
               ))}
-              {pending && (
-                <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-                  <Loader2 className="size-3.5 animate-spin" />
-                  Reading the catalogue…
-                </div>
-              )}
+              <AnimatePresence>
+                {pending && (
+                  <motion.div
+                    key="memo-typing"
+                    initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={
+                      reduced
+                        ? { opacity: 0 }
+                        : { opacity: 0, scale: 0.95 }
+                    }
+                    transition={{ duration: 0.3, ease: EASE }}
+                    className="flex items-center gap-2"
+                  >
+                    <span className="flex items-center gap-1 rounded-lg border border-border bg-background px-3 py-2.5">
+                      {[0, 1, 2].map((dot) => (
+                        <motion.span
+                          key={dot}
+                          className={cn(
+                            "size-1.5 rounded-full bg-brand",
+                            reduced && "opacity-50",
+                          )}
+                          animate={
+                            reduced
+                              ? undefined
+                              : { y: [0, -4, 0], opacity: [0.35, 1, 0.35] }
+                          }
+                          transition={{
+                            duration: 0.9,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: dot * 0.15,
+                          }}
+                        />
+                      ))}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Reading the catalogue…
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div ref={endRef} />
             </div>
 
             {turns.length <= 2 && (
               <div className="flex flex-wrap gap-2 border-t border-border px-4 py-3">
-                {SUGGESTIONS.map((suggestion) => (
-                  <button
+                {SUGGESTIONS.map((suggestion, index) => (
+                  <motion.button
                     key={suggestion}
                     type="button"
                     onClick={() => void send(suggestion)}
+                    initial={
+                      reduced ? { opacity: 0 } : { opacity: 0, y: 8 }
+                    }
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.35,
+                      ease: EASE,
+                      delay: 0.15 + index * 0.06,
+                    }}
+                    whileHover={reduced ? undefined : { y: -2 }}
+                    whileTap={reduced ? undefined : { scale: 0.96 }}
                     className="chip hover:border-foreground/25 hover:text-foreground"
                   >
                     {suggestion}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             )}
@@ -240,32 +399,13 @@ export function AssistantDock() {
         )}
       </AnimatePresence>
 
-      <motion.button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-label={open ? "Close the assistant" : "Ask the assistant"}
-        whileHover={reduced ? undefined : { scale: 1.03 }}
-        whileTap={reduced ? undefined : { scale: 0.97 }}
-        className={cn(
-          "fixed right-4 bottom-5 z-50 flex items-center gap-2 rounded-full border px-4 py-3 text-[13px] shadow-lift transition-colors",
-          open
-            ? "border-foreground/20 bg-foreground text-background"
-            : "border-brand-line bg-card text-foreground hover:border-brand",
-        )}
-      >
-        {open ? (
-          <X className="size-4" />
-        ) : (
-          <MessagesSquare className="size-4 text-brand" />
-        )}
-        <span className="hidden sm:inline">{open ? "Close" : "Ask Memo"}</span>
-        {!open && !configured && status !== undefined && (
-          <span className="hidden items-center gap-1 text-[10px] tracking-[0.1em] text-muted-foreground uppercase sm:flex">
-            <ArrowUpRight className="size-3" />
-            basic
-          </span>
-        )}
-      </motion.button>
+      <div className="fixed right-4 bottom-5 z-50">
+        <Launcher
+          open={open}
+          reduced={Boolean(reduced)}
+          onToggle={() => setOpen((value) => !value)}
+        />
+      </div>
     </>
   );
 }
