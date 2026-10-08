@@ -191,6 +191,7 @@ html[data-palette="colour-blind"].dark {
   }
   body {
     @apply bg-background text-foreground;
+    overscroll-behavior-y: contain;
     /* One very soft wash of colour, so no page is ever a flat sheet. */
     background-image: radial-gradient(
       78% 46% at 50% -12%,
@@ -262,10 +263,15 @@ html[data-palette="colour-blind"].dark {
       transition-duration: 0.01ms !important;
     }
   }
+  @media (orientation: landscape) and (max-height: 420px) {
+    body {
+      overscroll-behavior-y: auto;
+    }
+  }
 }
 
 @layer utilities {
-  /* Display serif — reserved for numerals and one-line editorial statements. */
+  /* Display serif - reserved for numerals and one-line editorial statements. */
   .font-display {
     font-family: var(--font-display);
     font-weight: 400;
@@ -594,7 +600,7 @@ html[data-palette="colour-blind"].dark {
 /*
  * Livelier landing pieces. Every one of them animates only when the visitor
  * has not asked for reduced motion, so the page stays still for those who
- * prefer it — the same rule the components follow with useReducedMotion.
+ * prefer it - the same rule the components follow with useReducedMotion.
  */
 @media (prefers-reduced-motion: no-preference) {
   /* An endless drift for the strip of words. The track holds the list twice,
@@ -688,7 +694,7 @@ html[data-palette="colour-blind"].dark {
   }
 
   /*
-   * Objects adrift. Small quiet things — a ticket, a rating, a ring, a grid —
+   * Objects adrift. Small quiet things - a ticket, a rating, a ring, a grid -
    * that hold a section's edges while never pulling the eye off the content.
    * Each keeps its own clock, travels a few pixels and turns a degree or two,
    * and every loop ends exactly where it began: transform-only, cheap enough

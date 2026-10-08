@@ -81,7 +81,7 @@ export function FeatureGrid() {
         className="glow-soft pointer-events-none absolute inset-x-0 top-0 h-72"
       />
 
-      <div className="relative mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
+      <div className="pb-6 pt-16 sm:mx-auto sm:w-full sm:max-w-6xl sm:px-5 sm:py-20">
         <div className="max-w-2xl">
           <span className="label-eyebrow text-brand">Why Memorius</span>
           <h2 className="font-display mt-5 text-[24px] leading-[1.18] font-light tracking-[-0.016em] text-balance sm:text-[30px]">
@@ -94,7 +94,7 @@ export function FeatureGrid() {
           </p>
         </div>
 
-        <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2">
+        <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
           {FEATURE_TONES.map((tone) => (
             <span
               key={tone.id}
@@ -110,6 +110,12 @@ export function FeatureGrid() {
               </span>
             </span>
           ))}
+          <span
+            className="sm:hidden ml-auto text-[10px] text-muted-foreground/60"
+            aria-hidden="true"
+          >
+            Tap a square to read the reason
+          </span>
         </div>
 
         <motion.ul
@@ -117,7 +123,7 @@ export function FeatureGrid() {
           initial={animated ? "hidden" : false}
           whileInView={animated ? "show" : undefined}
           viewport={{ once: true, amount: 0.03 }}
-          className="mt-9 grid grid-cols-4 justify-items-center gap-1.5 sm:grid-cols-6 sm:gap-2 lg:grid-cols-8 xl:grid-cols-10"
+          className="mt-9 grid justify-items-center gap-1.5 sm:gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12"
         >
           {FEATURES.map((feature, index) => {
             const style = TONE_STYLE[feature.tone];
@@ -133,7 +139,7 @@ export function FeatureGrid() {
                       type="button"
                       aria-label={`${feature.label}. ${feature.detail}`}
                       className={cn(
-                        "group ease-soft relative flex size-16 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-card/70 p-2 text-center transition-[transform,border-color,box-shadow] duration-300 sm:size-20 lg:size-24",
+                        "group ease-soft relative flex size-16 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-card/70 p-2 text-center transition-[transform,border-color,box-shadow] duration-300 sm:size-20 md:size-22 lg:size-24 xl:size-28",
                         "hover:-translate-y-1 hover:shadow-lift focus-visible:-translate-y-1 focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:outline-none",
                         style.edge,
                       )}
@@ -155,11 +161,16 @@ export function FeatureGrid() {
                         {feature.label}
                       </span>
                     </button>
-                  </TooltipTrigger>
+                  </TooltipTrigger>{" "}
                   <TooltipContent
                     side="top"
                     sideOffset={8}
                     className="max-w-[15rem] text-[11px] leading-5"
+                    collisionBoundary={[
+                      document.body,
+                      document.documentElement,
+                    ]}
+                    collisionPadding={6}
                   >
                     {/* The tooltip is an inverted chip, so the detail is set in
                         an inherited colour at lower emphasis rather than in

@@ -58,8 +58,7 @@ export function SiteFooter() {
             </ul>
           </div>
         ))}
-      </div>
-
+      </div>{" "}
       <div className="border-t border-border">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-5 py-6 text-[11px] tracking-[0.04em] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <span>© {new Date().getFullYear()} Memorius</span>
