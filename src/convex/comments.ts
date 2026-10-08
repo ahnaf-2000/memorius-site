@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { mayModerate } from "./access";
 import { publicComment, requireUserId } from "./model";
 
 const MAX_LENGTH = 1200;
@@ -53,7 +54,9 @@ export const add = mutation({
       throw new Error("Write a little more before posting.");
     }
     if (text.length > MAX_LENGTH) {
-      throw new Error(`Keep it under ${MAX_LENGTH.toLocaleString()} characters.`);
+      throw new Error(
+        `Keep it under ${MAX_LENGTH.toLocaleString()} characters.`,
+      );
     }
 
     const event = await ctx.db.get(eventId);
@@ -62,7 +65,8 @@ export const add = mutation({
     // A storage id that resolves to nothing would leave a broken link behind.
     if (attachmentId !== undefined) {
       const url = await ctx.storage.getUrl(attachmentId);
-      if (url === null) throw new Error("That upload did not finish. Try again.");
+      if (url === null)
+        throw new Error("That upload did not finish. Try again.");
     }
 
     const user = await ctx.db.get(userId);
@@ -84,7 +88,11 @@ export const add = mutation({
   },
 });
 
-/** Authors can remove their own posts; the owning business can moderate any. */
+/**
+ * Authors can remove their own posts, the owning business can moderate their
+ * own programme, and a site moderator can remove anything at all — the same
+ * three rungs whether the post is a comment or a review.
+ */
 export const remove = mutation({
   args: { commentId: v.id("comments") },
   handler: async (ctx, { commentId }) => {
@@ -95,7 +103,8 @@ export const remove = mutation({
     if (comment.userId !== userId) {
       const event = await ctx.db.get(comment.eventId);
       const fest = event === null ? null : await ctx.db.get(event.festId);
-      if (fest === null || fest.ownerId !== userId) {
+      const ownsProgramme = fest !== null && fest.ownerId === userId;
+      if (!ownsProgramme && !(await mayModerate(ctx))) {
         throw new Error("You can only remove your own posts.");
       }
     }

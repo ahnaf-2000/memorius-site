@@ -1,6 +1,7 @@
 import { MEMO_OPEN_EVENT } from "@/components/site/AssistantDock";
 import { EventDirectory } from "@/components/site/EventDirectory";
 import { EventSlideshow } from "@/components/site/EventSlideshow";
+import { FeatureGrid } from "@/components/site/FeatureGrid";
 import { PAYMENT_OPTIONS } from "@/components/site/PaymentMethods";
 import { StatusDot } from "@/components/site/EventList";
 import { ProgrammeCard } from "@/components/site/FestCard";
@@ -2256,6 +2257,9 @@ export default function Landing() {
         </section>
         {/* The report, at the foot of the page */}
         <ReportBand />
+
+        {/* The hundred reasons: the last word before the footer. */}
+        <FeatureGrid />
       </main>
 
       <SiteFooter />

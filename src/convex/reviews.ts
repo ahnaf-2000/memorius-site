@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { mayModerate } from "./access";
 import { requireUserId } from "./model";
 
 const MIN_BODY = 10;
@@ -103,7 +104,9 @@ export const remove = mutation({
     const fest = await ctx.db.get(review.festId);
     const isAuthor = review.userId === userId;
     const isOrganizer = fest !== null && fest.ownerId === userId;
-    if (!isAuthor && !isOrganizer) {
+    // A site moderator outranks both: it exists precisely for the review whose
+    // author and organizer both refuse to take it down.
+    if (!isAuthor && !isOrganizer && !(await mayModerate(ctx))) {
       throw new Error("That review belongs to someone else.");
     }
 

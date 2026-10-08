@@ -9,6 +9,8 @@ import { PageTransition } from "@/components/site/PageTransition";
 import { ScrollProgress } from "@/components/site/ScrollProgress";
 import { SecretAdmin } from "@/components/site/SecretAdmin";
 import { RequireAuth } from "@/components/RequireAuth";
+import { RequireStaff } from "@/components/site/RequireStaff";
+import { useOwnerClaim } from "@/hooks/use-access";
 import { usePersonaSync } from "@/hooks/use-profile";
 import { api } from "@/convex/_generated/api";
 import { detectCountry } from "@/lib/geo";
@@ -45,6 +47,7 @@ const ProgrammeDetail = lazy(() => import("./pages/ProgrammeDetail.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const Admin = lazy(() => import("./pages/Admin.tsx"));
+const Control = lazy(() => import("./pages/Control.tsx"));
 const Contact = lazy(() => import("./pages/Contact.tsx"));
 const Report = lazy(() => import("./pages/Report.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
@@ -183,6 +186,19 @@ function AppRoutes() {
                 </RequireAuth>
               }
             />
+            <Route
+              path="/control"
+              element={
+                <RequireAuth
+                  title="Control is by invitation"
+                  description="The owner's console is only open to the owner and the moderators they appoint."
+                >
+                  <RequireStaff>
+                    <Control />
+                  </RequireStaff>
+                </RequireAuth>
+              }
+            />
             <Route path="/contact" element={<Contact />} />
             <Route path="/report" element={<Report />} />
             <Route path="*" element={<NotFound />} />
@@ -196,6 +212,15 @@ function AppRoutes() {
 /** Writes the role chosen before sign-in onto a fresh account, once. */
 function PersonaSync() {
   usePersonaSync();
+  return null;
+}
+
+/**
+ * Records the site owner on their own account the first time they arrive
+ * signed in. The server decides whether that is true, by email.
+ */
+function AccessSync() {
+  useOwnerClaim();
   return null;
 }
 
@@ -263,6 +288,7 @@ createRoot(document.getElementById("root")!).render(
       <ConvexAuthProvider client={convex}>
         <BrowserRouter>
           <PersonaSync />
+          <AccessSync />
           <GeoDefaults />
           <PricedRoutes />
           {/* Chrome that stays out of a printed page: see the print rules. */}

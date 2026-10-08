@@ -20,6 +20,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useAccess } from "@/hooks/use-access";
 import { useAuth } from "@/hooks/use-auth";
 import { initials } from "@/lib/format";
 import { useT, type TranslationKey } from "@/lib/i18n";
@@ -30,6 +31,7 @@ import {
   LogOut,
   Menu,
   Settings2,
+  ShieldCheck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
@@ -44,6 +46,7 @@ const PRIMARY_NAV: { to: string; label: TranslationKey }[] = [
 
 export function SiteHeader() {
   const { isAuthenticated, user, signOut } = useAuth();
+  const access = useAccess();
   const t = useT();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -98,6 +101,13 @@ export function SiteHeader() {
               {t("nav.admin")}
             </NavLink>
           )}
+          {/* Control is the one page that reaches across accounts, so it is
+              only in the navigation for the owner and their moderators. */}
+          {access.isStaff && (
+            <NavLink to="/control" className={navLink}>
+              {t("nav.control")}
+            </NavLink>
+          )}
         </nav>
 
         <div className="ml-auto hidden sm:block">
@@ -132,7 +142,23 @@ export function SiteHeader() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel className="truncate font-normal text-muted-foreground">
-                    {user?.email ?? "Signed in"}
+                    <span className="flex items-center gap-2">
+                      <span className="truncate">
+                        {user?.email ?? "Signed in"}
+                      </span>
+                      {access.isStaff && (
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] tracking-[0.08em] uppercase",
+                            access.isOwner
+                              ? "border-brand/30 bg-brand/10 text-brand"
+                              : "border-warm/40 bg-warm/10 text-warm",
+                          )}
+                        >
+                          {access.isOwner ? "Owner" : "Mod"}
+                        </span>
+                      )}
+                    </span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -149,6 +175,15 @@ export function SiteHeader() {
                     <Settings2 className="mr-2 size-4" />
                     {t("nav.admin")}
                   </DropdownMenuItem>
+                  {access.isStaff && (
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={() => navigate("/control")}
+                    >
+                      <ShieldCheck className="mr-2 size-4" />
+                      {t("nav.control")}
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="cursor-pointer"
@@ -231,6 +266,16 @@ export function SiteHeader() {
                         {t("nav.admin")}
                       </Link>
                     </SheetClose>
+                    {access.isStaff && (
+                      <SheetClose asChild>
+                        <Link
+                          to="/control"
+                          className="rounded-md px-3 py-3 text-[15px] tracking-[-0.01em] transition-colors hover:bg-accent"
+                        >
+                          {t("nav.control")}
+                        </Link>
+                      </SheetClose>
+                    )}
                   </>
                 )}
               </nav>
