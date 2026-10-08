@@ -1,4 +1,4 @@
-import '@vly-ai/integrations';
+import "@vly-ai/integrations";
 import { Toaster } from "@/components/ui/sonner";
 import { AssistantDock } from "@/components/site/AssistantDock";
 import { EasterEggs } from "@/components/site/EasterEggs";
@@ -44,6 +44,7 @@ const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const Admin = lazy(() => import("./pages/Admin.tsx"));
 const Contact = lazy(() => import("./pages/Contact.tsx"));
+const Report = lazy(() => import("./pages/Report.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -113,8 +114,6 @@ class RootErrorBoundary extends React.Component<
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
-
-
 function RouteSyncer() {
   const location = useLocation();
   useEffect(() => {
@@ -183,6 +182,7 @@ function AppRoutes() {
               }
             />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/report" element={<Report />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </PageTransition>
@@ -263,13 +263,18 @@ createRoot(document.getElementById("root")!).render(
           <PersonaSync />
           <GeoDefaults />
           <PricedRoutes />
-          <AssistantDock />
-          <OpeningIntro />
-          <SecretAdmin />
+          {/* Chrome that stays out of a printed page: see the print rules. */}
+          <div data-app-chrome="">
+            <AssistantDock />
+            <OpeningIntro />
+            <SecretAdmin />
+          </div>
         </BrowserRouter>
-        <ScrollProgress />
-        <EasterEggs />
-        <Toaster />
+        <div data-app-chrome="">
+          <ScrollProgress />
+          <EasterEggs />
+          <Toaster />
+        </div>
       </ConvexAuthProvider>
     </RootErrorBoundary>
   </StrictMode>,

@@ -23,13 +23,20 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { ArrowRight, LayoutDashboard, LogOut, Menu, Settings2 } from "lucide-react";
+import {
+  ArrowRight,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Settings2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 
 const PRIMARY_NAV = [
   { to: "/events", label: "Catalogue" },
   { to: "/programmes", label: "Programmes" },
+  { to: "/report", label: "Report" },
   { to: "/contact", label: "Contact" },
 ];
 
@@ -60,7 +67,9 @@ export function SiteHeader() {
   const navLink = ({ isActive }: { isActive: boolean }) =>
     cn(
       "nav-link text-[13px] tracking-[-0.005em] transition-colors duration-200",
-      isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+      isActive
+        ? "text-foreground"
+        : "text-muted-foreground hover:text-foreground",
     );
 
   return (

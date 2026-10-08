@@ -328,6 +328,18 @@ const schema = defineSchema(
       .index("by_event", ["eventId"])
       .index("by_code", ["code"]),
 
+    /**
+     * One remembered answer from the assistant, keyed by the question plus a
+     * signature of the catalogue it was written from, so a repeated question
+     * costs nothing and a stale price is never repeated back.
+     */
+    assistantCache: defineTable({
+      key: v.string(),
+      reply: v.string(),
+      provider: v.string(),
+      createdAt: v.number(),
+    }).index("by_key", ["key"]),
+
     /** A note from the contact page, kept with the reference we quote back. */
     messages: defineTable({
       name: v.string(),

@@ -664,3 +664,38 @@ html[data-palette="colour-blind"].dark {
   }
 }
 
+/*
+ * Printing is for the document, not the chrome around it. The report is the one
+ * page built to be printed, so the floating assistant, the progress hairline,
+ * the intro and the toaster step out of the way here, and the sheet loses the
+ * shadows and rounded corners that only make sense on a screen.
+ */
+@media print {
+  [data-app-chrome],
+  .no-print {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+  }
+  body {
+    color: #000000;
+  }
+  .print-sheet {
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  .print-page {
+    padding: 0 !important;
+  }
+  a[href] {
+    text-decoration: none !important;
+  }
+  section {
+    break-inside: avoid;
+  }
+}
+

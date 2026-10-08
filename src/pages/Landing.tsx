@@ -1,3 +1,4 @@
+import { MEMO_OPEN_EVENT } from "@/components/site/AssistantDock";
 import { EventDirectory } from "@/components/site/EventDirectory";
 import { EventSlideshow } from "@/components/site/EventSlideshow";
 import { PAYMENT_OPTIONS } from "@/components/site/PaymentMethods";
@@ -32,6 +33,7 @@ import { useEnsureSeeded } from "@/hooks/use-seed";
 import { INTRO_PART_MS, introPlays } from "@/lib/intro";
 import {
   dayParts,
+  formatMoney,
   formatTimeRange,
   priceLabel,
   relativeDay,
@@ -51,18 +53,23 @@ import {
   ArrowRight,
   Building2,
   CalendarCheck,
+  FileText,
   GaugeCircle,
   Globe,
   Handshake,
   Layers3,
+  MessageSquare,
+  Printer,
   ShoppingBag,
   Sparkles,
   Star,
   Ticket,
   TrendingUp,
+  Zap,
 } from "lucide-react";
 import {
   useEffect,
+  useMemo,
   useState,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -158,46 +165,68 @@ const EASTER_EGGS: RailItem[] = [
   { name: "One-tap booking", icon: ArrowRight, tint: "var(--warm)" },
 ];
 
-const FEATURES = [
+type FeatureKind = "shop" | "tiers" | "stars" | "ledger" | "fx" | "memo";
+
+const FEATURES: {
+  icon: typeof ShoppingBag;
+  title: string;
+  copy: string;
+  tint: string;
+  kind: FeatureKind;
+}[] = [
   {
     icon: ShoppingBag,
+    kind: "shop",
     title: "Merchandise and snacks",
     copy: "List a tote, a pin or the coffee cart on the event itself. Attendees build a basket and collect at the desk.",
     tint: "icon-chip-warm",
   },
   {
     icon: Handshake,
+    kind: "tiers",
     title: "Sponsorship in four tiers",
     copy: "Community, Silver, Gold and Lead partner. Pledges arrive against the programme or one event, ready to confirm.",
     tint: "icon-chip-plum",
   },
   {
     icon: Star,
+    kind: "stars",
     title: "Ratings and reviews",
     copy: "One rating per attendee, averaged onto the event card, so the next customer reads what the room said.",
     tint: "",
   },
   {
     icon: TrendingUp,
+    kind: "ledger",
     title: "Revenue on one screen",
     copy: "Places, shop orders and sponsorship in a single ledger, split into collected, promised and still due.",
     tint: "icon-chip-cool",
   },
   {
     icon: Globe,
+    kind: "fx",
     title: "Prices in your market",
     copy: "Quote in BDT, USD, GBP or anywhere else. The figure follows the visitor's country, and can be changed any time.",
     tint: "icon-chip-cool",
   },
   {
     icon: Sparkles,
+    kind: "memo",
     title: "An assistant, always on",
-    copy: "Memo answers from the live catalogue — dates, prices, places left, how to pay — from any page, day or night.",
+    copy: "Memo is tuned on the live catalogue, so dates, prices and places left are quoted from the same records the pages print — and it will write the invitation or the agenda around them.",
     tint: "icon-chip-warm",
   },
 ];
 
 const FAQ = [
+  {
+    q: "What is Memo, exactly?",
+    a: "The assistant built into the product. Every question is answered with the live catalogue written into the prompt — programmes, dates, prices, places left, promotions and reviews — so the figures it quotes are the figures on the page. It will also do an ordinary task: an invitation, a social post, an agenda, a comparison, a translation. A general answer always finishes on this site, with the page where the result belongs.",
+  },
+  {
+    q: "Can I take the numbers away with me?",
+    a: "Yes — the platform report at the foot of this page, or /report, prints to A4 and downloads as a spreadsheet: places sold and still open, occupancy, revenue by rail, sponsorship against its four tiers, the promotions running and how the room rated each event. Aggregate figures only, never anything personal.",
+  },
   {
     q: "How do payments work, and where does the money go?",
     a: "Checkout accepts bKash, Nagad, Google Pay, PayPal, card, or settling at the desk. Every payment is recorded against a reference and appears in the organizer's revenue screen, which is also where they set where payouts should land.",
@@ -209,6 +238,10 @@ const FAQ = [
   {
     q: "What can an organizer actually sell?",
     a: "Three things on the same event: places at the event, merchandise to take home, and snacks or drinks for the day. Sponsorship is sold at programme or event level, in four tiers.",
+  },
+  {
+    q: "Does the assistant need a model key?",
+    a: "No. It runs on the platform's built-in model from the first page load, and adding your own key — or pointing ASSISTANT_MODEL at a fine-tune trained on your programmes — takes over the moment it is present. If a model is slow or unreachable, the same catalogue snapshot answers by rule within twelve seconds, so the dock is never a dead end.",
   },
   {
     q: "Is there a dark theme? What about colour vision?",
@@ -407,7 +440,12 @@ function Marquee({
             <span className="font-display px-4 text-[13px] tracking-[0.02em] text-muted-foreground">
               {word}
             </span>
-            <span className={cn("text-[9px]", tone === "plum" ? "text-plum" : "text-warm")}>
+            <span
+              className={cn(
+                "text-[9px]",
+                tone === "plum" ? "text-plum" : "text-warm",
+              )}
+            >
               ✦
             </span>
           </span>
@@ -534,11 +572,220 @@ function tintOf(tint: string): string {
  * the icon sits inside a slowly turning dashed ring, and the rule under the
  * copy draws itself in.
  */
+/**
+ * A small animated specimen for every promise, so the card demonstrates the
+ * feature instead of only describing it. Each one runs on its own clock and
+ * holds still for anyone who has asked for less motion.
+ */
+function ShopDemo({ tint }: { tint: string }) {
+  const reduced = useReducedMotion();
+  const items = ["Tote", "Pin", "Coffee"];
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {items.map((item, index) => (
+        <motion.span
+          key={item}
+          className="chip"
+          initial={reduced === true ? undefined : { opacity: 0, y: 6 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ delay: index * 0.1, duration: 0.4, ease: EASE }}
+        >
+          {item}
+        </motion.span>
+      ))}
+      <motion.span
+        className="chip chip-tinted"
+        style={{ ["--chip-tint" as string]: tint }}
+        animate={reduced === true ? undefined : { scale: [1, 1.06, 1] }}
+        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+      >
+        Basket · 3
+      </motion.span>
+    </div>
+  );
+}
+
+function TiersDemo() {
+  const reduced = useReducedMotion();
+  const tiers = ["Community", "Silver", "Gold", "Lead"];
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    if (reduced === true) return;
+    const id = window.setInterval(
+      () => setActive((current) => (current + 1) % tiers.length),
+      1500,
+    );
+    return () => window.clearInterval(id);
+  }, [reduced, tiers.length]);
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {tiers.map((tier, index) => (
+        <span
+          key={tier}
+          className={cn(
+            "chip transition-all duration-500",
+            index === active && "chip-tinted chip-plum scale-105",
+          )}
+        >
+          {tier}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function StarsDemo() {
+  const reduced = useReducedMotion();
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <motion.span
+            key={n}
+            initial={reduced === true ? undefined : { opacity: 0, scale: 0.5 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{
+              delay: n * 0.09,
+              type: "spring",
+              stiffness: 320,
+              damping: 17,
+            }}
+            className="text-warm"
+          >
+            <Star className="size-4" fill="currentColor" strokeWidth={0} />
+          </motion.span>
+        ))}
+      </span>
+      <span className="text-[11px] text-muted-foreground">4.8 from 26</span>
+    </div>
+  );
+}
+
+function LedgerDemo() {
+  const reduced = useReducedMotion();
+  const rows = [
+    { label: "Collected", width: "78%", tone: "bg-brand" },
+    { label: "Promised", width: "46%", tone: "bg-plum" },
+    { label: "Still due", width: "18%", tone: "bg-warm" },
+  ];
+
+  return (
+    <div className="space-y-2">
+      {rows.map((row, index) => (
+        <div key={row.label} className="flex items-center gap-3">
+          <span className="w-[68px] shrink-0 text-[10px] tracking-[0.08em] text-muted-foreground uppercase">
+            {row.label}
+          </span>
+          <span className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-border">
+            <motion.span
+              className={cn("absolute inset-y-0 left-0 rounded-full", row.tone)}
+              initial={reduced === true ? undefined : { width: 0 }}
+              whileInView={{ width: row.width }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.9, delay: index * 0.15, ease: EASE }}
+            />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CurrencyDemo() {
+  const reduced = useReducedMotion();
+  const quotes = [
+    { code: "BDT", price: "৳1,850" },
+    { code: "USD", price: "$15" },
+    { code: "GBP", price: "£12" },
+  ];
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (reduced === true) return;
+    const id = window.setInterval(
+      () => setIndex((current) => (current + 1) % quotes.length),
+      2200,
+    );
+    return () => window.clearInterval(id);
+  }, [reduced, quotes.length]);
+
+  const quote = quotes[index % quotes.length];
+
+  return (
+    <div className="flex items-center gap-3">
+      <span className="relative inline-flex h-6 min-w-[68px] items-center">
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={quote.code}
+            initial={reduced === true ? undefined : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduced === true ? undefined : { opacity: 0, y: -10 }}
+            transition={{ duration: 0.35, ease: EASE }}
+            className="font-display text-[19px] leading-none tabular-nums"
+          >
+            {quote.price}
+          </motion.span>
+        </AnimatePresence>
+      </span>
+      <span className="chip chip-tinted chip-cool">{quote.code}</span>
+    </div>
+  );
+}
+
+function MemoDemoLine() {
+  const reduced = useReducedMotion();
+  const [round, setRound] = useState(0);
+
+  useEffect(() => {
+    if (reduced === true) return;
+    const id = window.setInterval(
+      () => setRound((current) => current + 1),
+      7200,
+    );
+    return () => window.clearInterval(id);
+  }, [reduced]);
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-[11.5px] text-muted-foreground">
+      <Sparkles className="size-3.5 shrink-0 text-brand" />
+      <span className="truncate">
+        <TypedLine
+          key={round}
+          text="Which event is next? — and draft the invite."
+          speed={46}
+        />
+      </span>
+    </div>
+  );
+}
+
+/** Picks the specimen the card should show. */
+function FeatureDemo({ kind, tint }: { kind: FeatureKind; tint: string }) {
+  switch (kind) {
+    case "shop":
+      return <ShopDemo tint={tint} />;
+    case "tiers":
+      return <TiersDemo />;
+    case "stars":
+      return <StarsDemo />;
+    case "ledger":
+      return <LedgerDemo />;
+    case "fx":
+      return <CurrencyDemo />;
+    case "memo":
+      return <MemoDemoLine />;
+  }
+}
+
 function FeatureCard({
   feature,
   index,
 }: {
-  feature: typeof FEATURES[number];
+  feature: (typeof FEATURES)[number];
   index: number;
 }) {
   const reduced = useReducedMotion();
@@ -568,7 +815,9 @@ function FeatureCard({
             <motion.span
               aria-hidden="true"
               className="pointer-events-none absolute -inset-1.5 rounded-xl border border-dashed"
-              style={{ borderColor: `color-mix(in oklch, ${tint} 34%, transparent)` }}
+              style={{
+                borderColor: `color-mix(in oklch, ${tint} 34%, transparent)`,
+              }}
               animate={
                 active && !reduced
                   ? { rotate: 360, opacity: 1 }
@@ -597,7 +846,11 @@ function FeatureCard({
           </span>
         </div>
 
-        <h3 className="mt-5 text-[15px] font-medium tracking-[-0.015em]">
+        <div className="mt-5 flex min-h-[2.5rem] items-center">
+          <FeatureDemo kind={feature.kind} tint={tint} />
+        </div>
+
+        <h3 className="mt-4 text-[15px] font-medium tracking-[-0.015em]">
           {feature.title}
         </h3>
         <p className="mt-2.5 text-[12.5px] leading-6 text-muted-foreground">
@@ -645,7 +898,9 @@ function FactStrip() {
               onClick={() => setIndex(dot)}
               className={cn(
                 "h-1 rounded-full transition-all duration-500 ease-quint",
-                dot === index ? "w-7 bg-brand" : "w-2.5 bg-brand/25 hover:bg-brand/50",
+                dot === index
+                  ? "w-7 bg-brand"
+                  : "w-2.5 bg-brand/25 hover:bg-brand/50",
               )}
             />
           ))}
@@ -656,9 +911,17 @@ function FactStrip() {
         <AnimatePresence mode="wait">
           <motion.div
             key={fact.label}
-            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 14, filter: "blur(6px)" }}
+            initial={
+              reduced
+                ? { opacity: 0 }
+                : { opacity: 0, y: 14, filter: "blur(6px)" }
+            }
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            exit={reduced ? { opacity: 0 } : { opacity: 0, y: -14, filter: "blur(6px)" }}
+            exit={
+              reduced
+                ? { opacity: 0 }
+                : { opacity: 0, y: -14, filter: "blur(6px)" }
+            }
             transition={{ duration: reduced ? 0 : 0.5, ease: EASE }}
             className="flex flex-wrap items-baseline gap-x-4 gap-y-2"
           >
@@ -775,6 +1038,522 @@ function LivePulse({ events }: { events: EventListItem[] }) {
   );
 }
 
+/**
+ * The assistant, given the room to explain itself: what it is tuned on, what
+ * it will do beyond the catalogue, and a transcript that types itself out of
+ * the same records this page reads.
+ */
+const MEMO_POINTS = [
+  {
+    icon: Sparkles,
+    title: "Tuned on this catalogue",
+    copy: "Every programme, event, price, place count, promotion and review is written into the prompt before the model is asked anything, so it quotes the figure that is on the page today.",
+  },
+  {
+    icon: MessageSquare,
+    title: "General tasks as well as site questions",
+    copy: "Ask for an invitation, a social post, an agenda, a checklist, a comparison, a rewrite, a translation or a calculation. Memo does the work, not just the lookup.",
+  },
+  {
+    icon: Globe,
+    title: "Every answer lands back on the site",
+    copy: "A general answer ends with the page it belongs on and the step that publishes it — the draft becomes the event description in the admin console, under the programme it belongs to.",
+  },
+  {
+    icon: Zap,
+    title: "Built to be quick",
+    copy: "The catalogue is read in the same breath as the model call, a repeated question is answered from a cache, a slow model is cut off at twelve seconds, and with no key at all the catalogue still answers by rule.",
+  },
+];
+
+type MemoExchange = { question: string; answer: string; source: string };
+
+/** One line, typed out the way the dock writes it. */
+function TypedLine({ text, speed }: { text: string; speed: number }) {
+  const reduced = useReducedMotion();
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (reduced === true) return;
+    let shown = 0;
+    const id = window.setInterval(() => {
+      shown += 1;
+      setCount(shown);
+      if (shown >= text.length) window.clearInterval(id);
+    }, speed);
+    return () => window.clearInterval(id);
+  }, [text, speed, reduced]);
+
+  const visible = reduced === true ? text : text.slice(0, count);
+  const typing = reduced !== true && count < text.length;
+
+  return (
+    <span>
+      {visible}
+      {typing && (
+        <span
+          aria-hidden="true"
+          className="ml-0.5 inline-block h-[0.95em] w-[2px] translate-y-[2px] bg-brand"
+        />
+      )}
+    </span>
+  );
+}
+
+/**
+ * Once the question has been typed, the answer arrives — with the badge that
+ * says where it came from, so the panel is honest about which mode it is in.
+ */
+function MemoTranscript({
+  exchange,
+  provider,
+}: {
+  exchange: MemoExchange;
+  provider: string | null;
+}) {
+  const reduced = useReducedMotion();
+  const [answered, setAnswered] = useState(false);
+
+  useEffect(() => {
+    if (reduced === true) return;
+    const id = window.setTimeout(
+      () => setAnswered(true),
+      Math.min(3400, exchange.question.length * 24 + 600),
+    );
+    return () => window.clearTimeout(id);
+  }, [exchange.question, reduced]);
+
+  const revealed = reduced === true || answered;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <motion.div
+        initial={reduced === true ? undefined : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: EASE }}
+        className="flex justify-end"
+      >
+        <p className="max-w-[86%] rounded-lg bg-foreground px-3.5 py-2.5 text-[12.5px] leading-6 text-background">
+          <TypedLine text={exchange.question} speed={24} />
+        </p>
+      </motion.div>
+
+      <AnimatePresence>
+        {revealed && (
+          <motion.div
+            key="answer"
+            initial={reduced === true ? undefined : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: EASE }}
+            className="flex justify-start"
+          >
+            <div className="max-w-[92%] rounded-lg border border-border bg-background px-3.5 py-2.5 text-[12.5px] leading-6">
+              <TypedLine text={exchange.answer} speed={9} />
+              <span className="mt-2.5 block text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
+                {provider === null
+                  ? exchange.source
+                  : `${exchange.source} · ${provider}`}
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function MemoSection({ events }: { events: EventListItem[] | undefined }) {
+  const reduced = useReducedMotion();
+  const status = useQuery(api.assistant.status);
+  const stats = useQuery(api.insights.overview);
+  const [index, setIndex] = useState(0);
+
+  const exchanges = useMemo<MemoExchange[]>(() => {
+    const next = (events ?? []).find((event) => event.state !== "past");
+    const when = next === undefined ? "" : relativeDay(next.startTime);
+    const where = next === undefined ? "" : next.venue;
+
+    return [
+      {
+        question: "Which event is next, and how many places are left?",
+        answer:
+          next === undefined
+            ? "Nothing is open for booking yet. Publish a programme in the admin console and it appears here within the second — I read the same records this page does, not a copy."
+            : `“${next.title}” opens ${when.toLowerCase()} at ${where}, ${priceLabel(next.price).toLowerCase()}. ${next.remaining} of ${next.capacity} places are still open — the event lives at /events/${next.slug}, where a place is held in one click.`,
+        source: "Live catalogue",
+      },
+      {
+        question: "Draft a short invitation I can post today.",
+        answer:
+          next === undefined
+            ? "“Our next programme is taking shape — dates land on this page first.” Use that as the programme summary, and the first event you add gives it a date to point at."
+            : `“${next.title} — ${when}, ${where}. ${next.remaining} places left, ${priceLabel(next.price).toLowerCase()}. Reserve: /events/${next.slug}” · Drop that into the event description in the admin console and it becomes the copy on the event page and in the programme listing.`,
+        source: "Draft, then the next step",
+      },
+      {
+        question: "Give me three lines to send a sponsor.",
+        answer:
+          stats === undefined
+            ? "Three lines are easy once the report is open — the figures come straight from the platform report at /report."
+            : `${stats.events.upcoming} events are still to come across ${stats.programmes.count} programmes, ${stats.events.occupancy}% of places are already taken, and the room averages ${stats.reviews.average ?? "—"}/5 across ${stats.reviews.count} reviews. Sponsorship runs in four tiers, Community to Lead partner — a pledge lands on the programme page under /programmes.`,
+        source: "General task",
+      },
+    ];
+  }, [events, stats]);
+
+  useEffect(() => {
+    if (reduced === true) return;
+    const id = window.setInterval(
+      () => setIndex((current) => (current + 1) % exchanges.length),
+      13000,
+    );
+    return () => window.clearInterval(id);
+  }, [reduced, exchanges.length]);
+
+  const configured = status?.configured ?? false;
+  const exchange = exchanges[index % exchanges.length];
+
+  function askMemo(question?: string) {
+    celebrate({ count: 26 });
+    window.dispatchEvent(
+      new CustomEvent(MEMO_OPEN_EVENT, { detail: { question } }),
+    );
+  }
+
+  return (
+    <section id="assistant" className="scroll-mt-24 border-t border-border">
+      <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
+        <SectionHeading
+          eyebrow="The assistant"
+          title="Memo — a model tuned on this catalogue, and on everything around it."
+          description="Grounded in the same records the pages read, comfortable with an ordinary task, and always finishing on the page where the answer belongs."
+          action={
+            <Magnetic pull={0.12}>
+              <Button
+                type="button"
+                size="lg"
+                className="h-11 gap-2 rounded-full px-6 text-[14px]"
+                onClick={() => askMemo()}
+              >
+                <Sparkles className="size-4" />
+                Ask Memo now
+              </Button>
+            </Magnetic>
+          }
+        />
+
+        <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_0.92fr] lg:gap-14">
+          <div className="space-y-7">
+            {MEMO_POINTS.map((point, order) => (
+              <motion.div
+                key={point.title}
+                initial={reduced === true ? undefined : { opacity: 0, x: -16 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{
+                  duration: 0.6,
+                  delay: order * 0.08,
+                  ease: EASE,
+                }}
+                className="group flex gap-4 border-t border-border pt-6"
+              >
+                <span className="relative mt-0.5 grid size-9 shrink-0 place-items-center">
+                  <motion.span
+                    aria-hidden="true"
+                    className="absolute inset-0 rounded-full border border-dashed border-brand-line"
+                    animate={reduced === true ? undefined : { rotate: 360 }}
+                    transition={{
+                      duration: 26,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                  />
+                  <span className="icon-chip group-hover:scale-110">
+                    <point.icon className="size-4" />
+                  </span>
+                </span>
+                <div>
+                  <h3 className="text-[15px] font-medium tracking-[-0.015em]">
+                    {point.title}
+                  </h3>
+                  <p className="mt-2 max-w-lg text-[13px] leading-6 text-muted-foreground">
+                    {point.copy}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1 text-[12px] text-muted-foreground">
+              <span className="inline-flex items-center gap-2">
+                <span className="relative grid size-2 place-items-center">
+                  <span
+                    className={cn(
+                      "absolute size-1.5 rounded-full",
+                      configured ? "tone-open" : "bg-warm",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "absolute size-1.5 animate-halo rounded-full",
+                      configured ? "tone-open" : "bg-warm",
+                    )}
+                  />
+                </span>
+                {status === undefined
+                  ? "Checking the model key…"
+                  : configured
+                    ? `Answering with ${status.provider}${status.model === null ? "" : ` · ${status.model}`}`
+                    : "Catalogue mode — the rule-based brain answers until a model key is added"}
+              </span>
+              <span>Signed out is fine. Keep a conversation across pages.</span>
+            </div>
+
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+              <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+                <span className="relative grid size-9 place-items-center">
+                  <motion.span
+                    aria-hidden="true"
+                    className="absolute inset-0 rounded-full border border-dashed border-brand-line"
+                    animate={reduced === true ? undefined : { rotate: -360 }}
+                    transition={{
+                      duration: 18,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                  />
+                  <Sparkles className="size-4 text-brand" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium tracking-[-0.012em]">
+                    Memo, on the landing page
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    Three exchanges, typed from the live records.
+                  </p>
+                </div>
+              </div>
+
+              <div className="min-h-[13.5rem] px-5 py-5">
+                <MemoTranscript
+                  key={index}
+                  exchange={exchange}
+                  provider={configured ? (status?.provider ?? null) : null}
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-4 border-t border-border px-5 py-3.5">
+                <div className="flex items-center gap-2">
+                  {exchanges.map((item, dot) => (
+                    <button
+                      key={item.question}
+                      type="button"
+                      aria-label={item.question}
+                      onClick={() => setIndex(dot)}
+                      className={cn(
+                        "h-1.5 rounded-full transition-all",
+                        dot === index % exchanges.length
+                          ? "w-6 bg-brand"
+                          : "w-1.5 bg-border hover:bg-brand-line",
+                      )}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => askMemo(exchange.question)}
+                  className="group inline-flex items-center gap-1.5 text-[12px] text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+                >
+                  Ask this for real
+                  <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            <div className="rounded-xl border border-border bg-card p-6">
+              <p className="label-eyebrow">Try one of these</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {exchanges.map((item) => (
+                  <Magnetic key={item.question} pull={0.06}>
+                    <button
+                      type="button"
+                      onClick={() => askMemo(item.question)}
+                      className="chip chip-tinted chip-cool text-left"
+                    >
+                      {item.question}
+                    </button>
+                  </Magnetic>
+                ))}
+              </div>
+              <p className="mt-5 text-[12px] leading-6 text-muted-foreground">
+                Memo opens in the corner of the page, keeps the thread while you
+                browse, and answers from the same records the catalogue prints —
+                a price you were quoted is a price on an event page.
+              </p>
+            </div>{" "}
+            <div className="rounded-xl border border-border bg-card p-6">
+              <p className="label-eyebrow">Bring your own model</p>
+              <p className="mt-4 text-[13px] leading-6 text-muted-foreground">
+                Memo runs on the platform's built-in model with nothing to
+                configure. Adding your own key is a choice, not a requirement:{" "}
+                <code className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px]">
+                  GROQ_API_KEY
+                </code>
+                ,{" "}
+                <code className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px]">
+                  GEMINI_API_KEY
+                </code>{" "}
+                or{" "}
+                <code className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px]">
+                  OPENAI_API_KEY
+                </code>{" "}
+                in the project's Keys tab takes over the moment it is present.
+              </p>
+              <p className="mt-3 text-[12px] leading-6 text-muted-foreground">
+                Point{" "}
+                <code className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px]">
+                  ASSISTANT_MODEL
+                </code>{" "}
+                at a fine-tune trained on your own programmes, venues and tone
+                and that model answers instead — the grounding, the cache, the
+                twelve-second ceiling and the catalogue fallback all stay.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The report band: the same aggregate pass the assistant is grounded on, laid
+ * out as a document of its own. It sits at the foot of the page because the
+ * numbers are the point here, not the pitch.
+ */
+function ReportBand() {
+  const reduced = useReducedMotion();
+  const stats = useQuery(api.insights.overview);
+
+  return (
+    <section
+      id="report"
+      className="relative scroll-mt-24 overflow-hidden border-t border-border"
+    >
+      <div
+        aria-hidden="true"
+        className="glow-soft pointer-events-none absolute inset-x-0 top-0 h-72"
+      />
+      <div className="relative mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
+        <Rise>
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-hairline">
+            <div className="grid gap-10 p-8 sm:p-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-16">
+              <div>
+                <p className="label-eyebrow text-brand">Platform report</p>
+                <h2 className="mt-4 font-display text-[28px] leading-[1.15] tracking-[-0.02em] text-balance sm:text-[36px]">
+                  Every figure on this platform, in one document.
+                </h2>
+                <p className="mt-5 max-w-xl text-[14px] leading-7 text-muted-foreground">
+                  Places sold and still open, occupancy, revenue by rail,
+                  sponsorship against its four tiers, promotions in flight and
+                  what the room rated — read straight from the live records, on
+                  one page, ready to print or save as a PDF.
+                </p>
+                <div className="mt-9 flex flex-wrap items-center gap-3">
+                  <Magnetic pull={0.12}>
+                    <Button
+                      asChild
+                      size="lg"
+                      className="sheen h-11 gap-2 rounded-full px-6 text-[14px]"
+                    >
+                      <Link to="/report">
+                        <FileText className="size-4" />
+                        Open the report
+                        <ArrowRight className="size-4" />
+                      </Link>
+                    </Button>
+                  </Magnetic>
+                  <span className="inline-flex items-center gap-2 text-[12px] text-muted-foreground">
+                    <Printer className="size-3.5" />
+                    Prints to A4, or saves as a PDF
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border bg-background p-6">
+                <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
+                  <span className="label-eyebrow inline-flex items-center gap-2">
+                    <motion.span
+                      aria-hidden="true"
+                      className="size-1.5 rounded-full bg-brand"
+                      animate={
+                        reduced === true
+                          ? undefined
+                          : { opacity: [1, 0.25, 1], scale: [1, 1.5, 1] }
+                      }
+                      transition={{ duration: 2.6, repeat: Infinity }}
+                    />
+                    Generated live
+                  </span>
+                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                    {stats === undefined
+                      ? "Reading the records…"
+                      : `Updated ${new Date(stats.generatedAt).toLocaleString(
+                          "en-GB",
+                          {
+                            day: "numeric",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )}`}
+                  </span>
+                </div>
+
+                <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-7">
+                  <Stat count={stats?.programmes.count} label="Programmes" />
+                  <Stat count={stats?.events.upcoming} label="Events to come" />
+                  <Stat count={stats?.money.placesSold} label="Places sold" />
+                  <Stat
+                    count={stats?.events.placesLeft}
+                    label="Places still open"
+                  />
+                  <div className="flex flex-col gap-1.5">
+                    <span className="font-display text-[28px] leading-none tabular-nums">
+                      {stats === undefined
+                        ? "—"
+                        : formatMoney(stats.money.collected)}
+                    </span>
+                    <span className="text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+                      Collected so far
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="font-display text-[28px] leading-none tabular-nums">
+                      {stats === undefined || stats.reviews.average === null
+                        ? "—"
+                        : `${stats.reviews.average}/5`}
+                    </span>
+                    <span className="text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+                      From {stats?.reviews.count ?? "—"} reviews
+                    </span>
+                  </div>
+                </div>
+
+                <p className="mt-6 border-t border-border pt-4 text-[11px] leading-5 text-muted-foreground">
+                  Aggregate figures only — no customer names, emails or
+                  references leave the platform.
+                </p>
+              </div>
+            </div>
+          </div>
+        </Rise>
+      </div>
+    </section>
+  );
+}
+
 export default function Landing() {
   useEnsureSeeded();
   const events = useQuery(api.events.list);
@@ -857,14 +1636,14 @@ export default function Landing() {
 
               <Reveal delay={0.06}>
                 <h1 className="mt-8 text-[44px] leading-[1.02] font-medium tracking-[-0.04em] text-balance sm:text-[62px]">
-                  <SplitWords text="Find your next event, and" delay={heroDelay} />{" "}
+                  <SplitWords
+                    text="Find your next event, and"
+                    delay={heroDelay}
+                  />{" "}
                   <em className="font-display font-normal italic">
                     <Swash>book it</Swash>
                   </em>{" "}
-                  <SplitWords
-                    text="in a minute."
-                    delay={heroDelay + 0.38}
-                  />
+                  <SplitWords text="in a minute." delay={heroDelay + 0.38} />
                 </h1>
               </Reveal>
 
@@ -907,8 +1686,14 @@ export default function Landing() {
                 <div className="mt-14 grid grid-cols-2 gap-8 border-t border-border pt-8 sm:grid-cols-4">
                   <Stat count={programmes?.length} label="Programmes" />
                   <Stat count={events?.length} label="Events" />
-                  <Stat count={loaded ? totalCapacity : undefined} label="Places" />
-                  <Stat count={loaded ? totalBooked : undefined} label="Booked" />
+                  <Stat
+                    count={loaded ? totalCapacity : undefined}
+                    label="Places"
+                  />
+                  <Stat
+                    count={loaded ? totalBooked : undefined}
+                    label="Booked"
+                  />
                 </div>
               </Reveal>
             </div>
@@ -1150,10 +1935,7 @@ export default function Landing() {
                     <Skeleton key={index} className="h-64 rounded-lg" />
                   ))
                 : programmes.map((programme: ProgrammeListItem) => (
-                    <ProgrammeCard
-                      key={programme._id}
-                      programme={programme}
-                    />
+                    <ProgrammeCard key={programme._id} programme={programme} />
                   ))}
             </div>
           </div>
@@ -1212,6 +1994,9 @@ export default function Landing() {
             </div>
           </div>
         </section>
+
+        {/* The assistant */}
+        <MemoSection events={events} />
 
         {/* For businesses */}
         <section className="border-t border-border">
@@ -1436,9 +2221,15 @@ export default function Landing() {
                 <motion.span
                   aria-hidden="true"
                   animate={
-                    reduced ? undefined : { rotate: [0, 20, -14, 0], scale: [1, 1.15, 1] }
+                    reduced
+                      ? undefined
+                      : { rotate: [0, 20, -14, 0], scale: [1, 1.15, 1] }
                   }
-                  transition={{ duration: 3.4, repeat: Infinity, repeatDelay: 1.6 }}
+                  transition={{
+                    duration: 3.4,
+                    repeat: Infinity,
+                    repeatDelay: 1.6,
+                  }}
                   className="text-warm"
                 >
                   ✦
@@ -1455,6 +2246,8 @@ export default function Landing() {
             </div>
           </div>
         </section>
+        {/* The report, at the foot of the page */}
+        <ReportBand />
       </main>
 
       <SiteFooter />

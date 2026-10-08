@@ -93,9 +93,7 @@ export function Celebrate() {
       setPieces((previous) => [...previous, ...batch]);
       const ids = new Set(batch.map((piece) => piece.id));
       window.setTimeout(() => {
-        setPieces((previous) =>
-          previous.filter((piece) => !ids.has(piece.id)),
-        );
+        setPieces((previous) => previous.filter((piece) => !ids.has(piece.id)));
       }, 2200);
     }
 
@@ -478,7 +476,10 @@ export function ParticleField({ className }: { className?: string }) {
     <canvas
       ref={ref}
       aria-hidden="true"
-      className={cn("pointer-events-none absolute inset-0 size-full", className)}
+      className={cn(
+        "pointer-events-none absolute inset-0 size-full",
+        className,
+      )}
     />
   );
 }
@@ -526,7 +527,10 @@ export function CometRail({
           <span className="label-eyebrow text-brand">{title}</span>
           <span className="text-[13px] text-muted-foreground">{hint}</span>
         </div>
-        <span className="chip chip-tinted tabular-nums" style={{ ["--chip-tint" as string]: "var(--brand)" }}>
+        <span
+          className="chip chip-tinted tabular-nums"
+          style={{ ["--chip-tint" as string]: "var(--brand)" }}
+        >
           {found.length} / {items.length} found
         </span>
       </div>
@@ -550,46 +554,74 @@ export function CometRail({
         {items.map((item, index) => {
           const isFound = found.includes(item.name);
           return (
-            <motion.button
+            // Each chip drifts on its own clock until it is found, so the row
+            // is visibly alive rather than a static line of buttons.
+            <motion.span
               key={item.name}
-              type="button"
-              initial={reduced ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.9 }}
-              whileInView={{ opacity: 1, y: 0, scale: 1 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{
-                duration: reduced ? 0 : 0.5,
-                delay: reduced ? 0 : index * 0.035,
-                ease: EASE_OUT,
-              }}
-              whileTap={reduced ? undefined : { scale: 0.94 }}
-              onClick={(event) => {
-                if (isFound) return;
-                const rect = event.currentTarget.getBoundingClientRect();
-                celebrate({
-                  x: rect.left + rect.width / 2,
-                  y: rect.top + rect.height / 2,
-                  count: 16,
-                });
-                setFound((previous) => [...previous, item.name]);
-              }}
-              style={{ ["--chip-tint" as string]: item.tint }}
-              className={cn(
-                "chip gap-2 transition-transform",
-                isFound && "chip-tinted",
-                !isFound && "hover:-translate-y-0.5",
-              )}
+              className="inline-block"
+              animate={
+                reduced || isFound
+                  ? undefined
+                  : {
+                      y: [0, -3.5, 0],
+                      rotate: [0, index % 2 === 0 ? 0.8 : -0.8, 0],
+                    }
+              }
+              transition={
+                reduced
+                  ? undefined
+                  : {
+                      duration: 3.4 + (index % 4) * 0.35,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: index * 0.19,
+                    }
+              }
             >
-              <motion.span
-                whileHover={
-                  reduced ? undefined : { rotate: [0, -14, 10, 0], scale: 1.12 }
+              <motion.button
+                type="button"
+                initial={
+                  reduced ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.9 }
                 }
-                transition={{ duration: 0.5 }}
-                className="grid place-items-center"
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{
+                  duration: reduced ? 0 : 0.5,
+                  delay: reduced ? 0 : index * 0.035,
+                  ease: EASE_OUT,
+                }}
+                whileTap={reduced ? undefined : { scale: 0.94 }}
+                onClick={(event) => {
+                  if (isFound) return;
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  celebrate({
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2,
+                    count: 16,
+                  });
+                  setFound((previous) => [...previous, item.name]);
+                }}
+                style={{ ["--chip-tint" as string]: item.tint }}
+                className={cn(
+                  "chip gap-2 transition-transform",
+                  isFound && "chip-tinted",
+                  !isFound && "hover:-translate-y-0.5",
+                )}
               >
-                <item.icon className="size-3.5" />
-              </motion.span>
-              {item.name}
-            </motion.button>
+                <motion.span
+                  whileHover={
+                    reduced
+                      ? undefined
+                      : { rotate: [0, -14, 10, 0], scale: 1.12 }
+                  }
+                  transition={{ duration: 0.5 }}
+                  className="grid place-items-center"
+                >
+                  <item.icon className="size-3.5" />
+                </motion.span>
+                {item.name}
+              </motion.button>
+            </motion.span>
           );
         })}
       </div>

@@ -26,6 +26,8 @@ const SUGGESTIONS = [
   "How much are the workshops?",
   "How do I pay with bKash?",
   "Can my company sponsor?",
+  "Draft an invitation for the next one",
+  "What does the platform report say?",
 ];
 
 /**
@@ -33,7 +35,11 @@ const SUGGESTIONS = [
  * its brand ring turns slowly, its live dot pings. Memo is always on, and
  * the launcher should look like it.
  */
-function Launcher(props: { open: boolean; reduced: boolean; onToggle: () => void }) {
+function Launcher(props: {
+  open: boolean;
+  reduced: boolean;
+  onToggle: () => void;
+}) {
   const { open, reduced, onToggle } = props;
   return (
     <motion.div
@@ -84,7 +90,9 @@ function Launcher(props: { open: boolean; reduced: boolean; onToggle: () => void
               <MessagesSquare className="relative size-4 text-brand" />
             )}
           </span>
-          <span className="hidden sm:inline">{open ? "Close" : "Ask Memo"}</span>
+          <span className="hidden sm:inline">
+            {open ? "Close" : "Ask Memo"}
+          </span>
           {!open && (
             <span className="absolute -top-1 -right-1 flex size-3">
               {!reduced && (
@@ -92,7 +100,11 @@ function Launcher(props: { open: boolean; reduced: boolean; onToggle: () => void
                   aria-hidden
                   className="tone-open absolute size-full rounded-full"
                   animate={{ scale: [1, 2.2], opacity: [0.55, 0] }}
-                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeOut" }}
+                  transition={{
+                    duration: 2.2,
+                    repeat: Infinity,
+                    ease: "easeOut",
+                  }}
                 />
               )}
               <span className="tone-open relative size-3 rounded-full ring-2 ring-background" />
@@ -103,6 +115,15 @@ function Launcher(props: { open: boolean; reduced: boolean; onToggle: () => void
     </motion.div>
   );
 }
+
+/**
+ * Anything on the site can open the assistant, and optionally hand it a
+ * question to ask on the spot:
+ * window.dispatchEvent(new CustomEvent(MEMO_OPEN_EVENT, { detail: { question } }))
+ */
+export const MEMO_OPEN_EVENT = "memorius:memo-open";
+
+type MemoOpenDetail = { question?: string };
 
 /**
  * The assistant, available on every page. It answers from the live catalogue,
@@ -174,6 +195,23 @@ export function AssistantDock() {
     }
   }
 
+  // The page can open the dock, and ask the question it wants answered. The
+  // latest send closure is kept in a ref so the listener is subscribed once.
+  const sendRef = useRef(send);
+  useEffect(() => {
+    sendRef.current = send;
+  });
+
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const detail = (event as CustomEvent<MemoOpenDetail>).detail;
+      setOpen(true);
+      if (detail?.question !== undefined) void sendRef.current(detail.question);
+    };
+    window.addEventListener(MEMO_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(MEMO_OPEN_EVENT, onOpen);
+  }, []);
+
   const configured = status?.configured ?? false;
 
   return (
@@ -186,9 +224,7 @@ export function AssistantDock() {
               reduced ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.95 }
             }
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={
-              reduced ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.96 }
-            }
+            exit={reduced ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.96 }}
             transition={
               reduced
                 ? { duration: 0.15 }
@@ -289,9 +325,7 @@ export function AssistantDock() {
                     initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={
-                      reduced
-                        ? { opacity: 0 }
-                        : { opacity: 0, scale: 0.95 }
+                      reduced ? { opacity: 0 } : { opacity: 0, scale: 0.95 }
                     }
                     transition={{ duration: 0.3, ease: EASE }}
                     className="flex items-center gap-2"
@@ -334,9 +368,7 @@ export function AssistantDock() {
                     key={suggestion}
                     type="button"
                     onClick={() => void send(suggestion)}
-                    initial={
-                      reduced ? { opacity: 0 } : { opacity: 0, y: 8 }
-                    }
+                    initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{
                       duration: 0.35,
@@ -388,6 +420,13 @@ export function AssistantDock() {
                 Browse every event
               </Link>
               <Link
+                to="/report"
+                onClick={() => setOpen(false)}
+                className="link-quiet"
+              >
+                Platform report
+              </Link>
+              <Link
                 to="/dashboard"
                 onClick={() => setOpen(false)}
                 className="link-quiet"
@@ -399,6 +438,7 @@ export function AssistantDock() {
         )}
       </AnimatePresence>
 
+      {/* Fixed chrome: out of the printed sheet, on every screen. */}
       <div className="fixed right-4 bottom-5 z-50">
         <Launcher
           open={open}
