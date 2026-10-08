@@ -17,7 +17,7 @@ export default function Events() {
         <div className="mx-auto w-full max-w-6xl px-5 pt-16 pb-24 sm:px-8 sm:pt-20">
           <header className="max-w-3xl">
             <p className="label-eyebrow">Catalogue</p>
-            <h1 className="mt-4 text-[36px] leading-[1.06] font-medium tracking-[-0.035em] text-balance sm:text-[46px]">
+            <h1 className="mt-4 text-[26px] leading-[1.2] font-light tracking-[-0.015em] text-balance sm:text-[34px]">
               The catalogue.
             </h1>
             <p className="mt-5 text-[15px] leading-7 text-muted-foreground">

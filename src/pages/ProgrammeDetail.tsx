@@ -51,7 +51,7 @@ export default function ProgrammeDetail() {
         <main className="flex-1">
           <div className="mx-auto max-w-xl px-5 py-32 text-center sm:px-8">
             <p className="label-eyebrow">Not found</p>
-            <h1 className="mt-4 text-[28px] font-medium tracking-[-0.03em]">
+            <h1 className="mt-4 text-[24px] font-light tracking-[-0.014em]">
               That programme is no longer listed.
             </h1>
             <Button asChild className="mt-8 h-10 rounded-full px-5">
@@ -89,7 +89,7 @@ export default function ProgrammeDetail() {
               <ProgrammePhaseTag phase={fest.phase} />
             </div>
 
-            <h1 className="mt-6 max-w-3xl text-[36px] leading-[1.04] font-medium tracking-[-0.038em] text-balance sm:text-[48px]">
+            <h1 className="mt-6 max-w-3xl text-[26px] leading-[1.2] font-light tracking-[-0.015em] text-balance sm:text-[34px]">
               {fest.name}
             </h1>
 

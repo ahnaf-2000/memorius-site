@@ -865,7 +865,7 @@ export default function EventDetail() {
         <main className="flex-1">
           <div className="mx-auto max-w-xl px-5 py-32 text-center sm:px-8">
             <p className="label-eyebrow">Not found</p>
-            <h1 className="mt-4 text-[28px] font-medium tracking-[-0.03em]">
+            <h1 className="mt-4 text-[24px] font-light tracking-[-0.014em]">
               That event is no longer listed.
             </h1>
             <p className="mt-4 text-[14px] leading-7 text-muted-foreground">
@@ -925,7 +925,7 @@ export default function EventDetail() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: EASE }}
-                className="mt-6 text-[34px] leading-[1.06] font-medium tracking-[-0.035em] text-balance sm:text-[42px]"
+                className="mt-6 text-[26px] leading-[1.2] font-light tracking-[-0.015em] text-balance sm:text-[34px]"
               >
                 {event.title}
               </motion.h1>

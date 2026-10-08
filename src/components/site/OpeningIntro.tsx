@@ -185,7 +185,7 @@ export function OpeningIntro() {
                   delay: 0.44 + index * 0.055,
                   ease: EASE,
                 }}
-                className="font-display text-[36px] tracking-[0.12em] sm:text-[58px]"
+                className="font-display text-[24px] tracking-[0.16em] sm:text-[36px]"
               >
                 {letter}
               </motion.span>
@@ -207,7 +207,11 @@ export function OpeningIntro() {
                 key={stage}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 1.15 + index * 0.09, ease: EASE }}
+                transition={{
+                  duration: 0.6,
+                  delay: 1.15 + index * 0.09,
+                  ease: EASE,
+                }}
                 className="flex items-center gap-4 text-[10px] tracking-[0.18em] text-muted-foreground uppercase"
               >
                 {index > 0 && (

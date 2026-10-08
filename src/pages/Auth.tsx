@@ -38,14 +38,16 @@ const PERSONAS: {
   {
     id: "organizer",
     name: "Organizer — I run events",
-    blurb: "Publish programmes, sell places, merchandise and snacks, and collect sponsorship.",
+    blurb:
+      "Publish programmes, sell places, merchandise and snacks, and collect sponsorship.",
     tint: "",
     icon: <Building2 className="size-4" />,
   },
   {
     id: "participant",
     name: "Participant — I attend",
-    blurb: "Book a place in a minute, keep your schedule, and leave a review afterwards.",
+    blurb:
+      "Book a place in a minute, keep your schedule, and leave a review afterwards.",
     tint: "icon-chip-cool",
     icon: <Ticket className="size-4" />,
   },
@@ -162,12 +164,13 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         <div className="w-full max-w-[400px]">
           {step === "signIn" ? (
             <>
-              <h1 className="text-[28px] leading-[1.12] font-medium tracking-[-0.03em] text-balance">
+              <h1 className="text-[24px] leading-[1.2] font-light tracking-[-0.014em] text-balance">
                 One account, whichever side of the table you are on.
               </h1>
               <p className="mt-3 text-[13px] leading-6 text-muted-foreground">
-                No password to remember — we send a six-digit code by email. Pick
-                how you are joining, and the product opens on the right screen.
+                No password to remember — we send a six-digit code by email.
+                Pick how you are joining, and the product opens on the right
+                screen.
               </p>
 
               <div className="mt-8">
@@ -189,7 +192,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                       )}
                     >
                       <span
-                        className={cn("icon-chip mt-0.5 size-8 shrink-0", option.tint)}
+                        className={cn(
+                          "icon-chip mt-0.5 size-8 shrink-0",
+                          option.tint,
+                        )}
                       >
                         {option.icon}
                       </span>
@@ -274,7 +280,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
             </>
           ) : (
             <>
-              <h1 className="text-[26px] leading-[1.15] font-medium tracking-[-0.03em]">
+              <h1 className="text-[22px] leading-[1.2] font-light tracking-[-0.014em]">
                 Check your email
               </h1>
               <p className="mt-3 text-[13px] leading-6 text-muted-foreground">
@@ -364,8 +370,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       <footer className="border-t border-border">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-5 py-6 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <span className="inline-flex items-center gap-2">
-            <BrandMark className="size-4 rounded-[5px]" />
-            © {new Date().getFullYear()} Memorius
+            <BrandMark className="size-4 rounded-[5px]" />©{" "}
+            {new Date().getFullYear()} Memorius
           </span>
           <span>
             Need a hand?{" "}

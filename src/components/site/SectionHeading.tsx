@@ -29,7 +29,7 @@ export function SectionHeading({
       >
         <div className="max-w-2xl">
           <p className="label-eyebrow">{eyebrow}</p>
-          <h2 className="mt-3 text-[22px] leading-[1.25] font-medium tracking-[-0.022em] text-balance sm:text-[26px]">
+          <h2 className="mt-3 text-[18px] leading-[1.35] font-normal tracking-[-0.01em] text-balance sm:text-[21px]">
             {title}
           </h2>
           {description !== undefined && (

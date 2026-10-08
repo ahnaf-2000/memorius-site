@@ -47,10 +47,11 @@
 /* Minimalism: warm paper, ink text, one neutral accent. No colour noise. */
 :root {
   --radius: 0.75rem;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    Helvetica, Arial, sans-serif;
-  --font-display: "Instrument Serif", ui-serif, Georgia, "Times New Roman",
-    serif;
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica,
+    Arial, sans-serif;
+  --font-display:
+    "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
 
   /* Paper is warm but nearly neutral; ink is deep enough to carry small text. */
   --background: oklch(0.9935 0.002 95);
@@ -209,7 +210,7 @@ html[data-palette="colour-blind"].dark {
   h2,
   h3,
   h4 {
-    letter-spacing: -0.022em;
+    letter-spacing: -0.014em;
     text-wrap: balance;
   }
   p {
@@ -268,7 +269,7 @@ html[data-palette="colour-blind"].dark {
   .font-display {
     font-family: var(--font-display);
     font-weight: 400;
-    letter-spacing: -0.015em;
+    letter-spacing: -0.008em;
   }
   /* Small caps-ish eyebrow label used across section headers. */
   .label-eyebrow {
@@ -413,9 +414,21 @@ html[data-palette="colour-blind"].dark {
     color: var(--foreground);
   }
   .chip-tinted {
-    border-color: color-mix(in oklch, var(--chip-tint, var(--brand)) 30%, transparent);
-    background: color-mix(in oklch, var(--chip-tint, var(--brand)) 10%, var(--card));
-    color: color-mix(in oklch, var(--chip-tint, var(--brand)) 70%, var(--foreground));
+    border-color: color-mix(
+      in oklch,
+      var(--chip-tint, var(--brand)) 30%,
+      transparent
+    );
+    background: color-mix(
+      in oklch,
+      var(--chip-tint, var(--brand)) 10%,
+      var(--card)
+    );
+    color: color-mix(
+      in oklch,
+      var(--chip-tint, var(--brand)) 70%,
+      var(--foreground)
+    );
   }
   .chip-cool {
     --chip-tint: var(--cool);
@@ -434,9 +447,18 @@ html[data-palette="colour-blind"].dark {
     width: 2.5rem;
     height: 2.5rem;
     border-radius: calc(var(--radius) - 2px);
-    border: 1px solid color-mix(in oklch, var(--chip-tint, var(--brand)) 28%, transparent);
-    background: color-mix(in oklch, var(--chip-tint, var(--brand)) 11%, var(--card));
-    color: color-mix(in oklch, var(--chip-tint, var(--brand)) 72%, var(--foreground));
+    border: 1px solid
+      color-mix(in oklch, var(--chip-tint, var(--brand)) 28%, transparent);
+    background: color-mix(
+      in oklch,
+      var(--chip-tint, var(--brand)) 11%,
+      var(--card)
+    );
+    color: color-mix(
+      in oklch,
+      var(--chip-tint, var(--brand)) 72%,
+      var(--foreground)
+    );
   }
   .icon-chip-cool {
     --chip-tint: var(--cool);
@@ -522,11 +544,13 @@ html[data-palette="colour-blind"].dark {
   --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
   --ease-swift: cubic-bezier(0.4, 0, 0.2, 1);
 
-  --shadow-hairline: 0 1px 1px oklch(0.19 0.01 65 / 0.035),
-    0 1px 2px oklch(0.19 0.01 65 / 0.04);
-  --shadow-lift: 0 2px 6px -2px oklch(0.19 0.01 65 / 0.08),
+  --shadow-hairline:
+    0 1px 1px oklch(0.19 0.01 65 / 0.035), 0 1px 2px oklch(0.19 0.01 65 / 0.04);
+  --shadow-lift:
+    0 2px 6px -2px oklch(0.19 0.01 65 / 0.08),
     0 18px 40px -22px oklch(0.19 0.01 65 / 0.22);
-  --shadow-panel: 0 1px 0 oklch(0.19 0.01 65 / 0.03),
+  --shadow-panel:
+    0 1px 0 oklch(0.19 0.01 65 / 0.03),
     0 24px 60px -32px oklch(0.19 0.01 65 / 0.2);
 
   --color-brand: var(--brand);
@@ -662,6 +686,61 @@ html[data-palette="colour-blind"].dark {
   .breathe {
     animation: breathe 7s ease-in-out infinite;
   }
+
+  /*
+   * Objects adrift. Small quiet things — a ticket, a rating, a ring, a grid —
+   * that hold a section's edges while never pulling the eye off the content.
+   * Each keeps its own clock, travels a few pixels and turns a degree or two,
+   * and every loop ends exactly where it began: transform-only, cheap enough
+   * to leave running, and still for anyone who has asked for less motion.
+   */
+  @keyframes adrift {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) rotate(0deg);
+    }
+    50% {
+      transform: translate3d(2px, -14px, 0) rotate(1.6deg);
+    }
+  }
+  @keyframes adrift-wide {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+    }
+    50% {
+      transform: translate3d(-11px, -18px, 0) rotate(-2.4deg) scale(1.03);
+    }
+  }
+  @keyframes adrift-low {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) rotate(0deg);
+    }
+    50% {
+      transform: translate3d(9px, 13px, 0) rotate(1.1deg);
+    }
+  }
+  @keyframes turn-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .adrift {
+    animation: adrift 11s ease-in-out infinite;
+  }
+  .adrift-wide {
+    animation: adrift-wide 15s ease-in-out infinite;
+  }
+  .adrift-low {
+    animation: adrift-low 19s ease-in-out infinite;
+  }
+  .turn-slow {
+    animation: turn-slow 44s linear infinite;
+  }
 }
 
 /*
@@ -698,4 +777,3 @@ html[data-palette="colour-blind"].dark {
     break-inside: avoid;
   }
 }
-

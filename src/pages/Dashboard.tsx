@@ -299,7 +299,7 @@ export default function Dashboard() {
           <header className="flex flex-wrap items-start justify-between gap-6 border-b border-border pb-10">
             <div>
               <p className="label-eyebrow">Your account</p>
-              <h1 className="mt-4 text-[32px] leading-[1.06] font-medium tracking-[-0.035em] sm:text-[38px]">
+              <h1 className="mt-4 text-[26px] leading-[1.2] font-light tracking-[-0.015em] sm:text-[32px]">
                 Your bookings
               </h1>
               <p className="mt-4 max-w-xl text-[14px] leading-7 text-muted-foreground">

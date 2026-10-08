@@ -44,7 +44,7 @@ function Slide({ event }: { event: EventListItem }) {
           <span className="capitalize">{event.format}</span>
         </div>
 
-        <h3 className="font-display mt-5 text-[30px] leading-[1.08] tracking-[-0.025em] text-balance sm:text-[36px]">
+        <h3 className="font-display mt-5 text-[24px] leading-[1.15] tracking-[-0.01em] text-balance sm:text-[30px]">
           {event.title}
         </h3>
 
@@ -72,7 +72,9 @@ function Slide({ event }: { event: EventListItem }) {
         <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-4">
           <Button asChild size="sm" className="h-9 gap-1.5 rounded-full px-4">
             <Link to={`/events/${event.slug}`}>
-              {event.state === "full" ? "Join the waiting list" : "Reserve a place"}
+              {event.state === "full"
+                ? "Join the waiting list"
+                : "Reserve a place"}
               <ArrowRight className="size-3.5" />
             </Link>
           </Button>
@@ -88,7 +90,7 @@ function Slide({ event }: { event: EventListItem }) {
           <span className="text-[10px] leading-none tracking-[0.2em] text-muted-foreground uppercase">
             {parts.weekday}
           </span>
-          <span className="font-display mt-2 text-[38px] leading-none tabular-nums sm:text-[46px]">
+          <span className="font-display mt-2 text-[30px] leading-none tabular-nums sm:text-[36px]">
             {parts.day}
           </span>
           <span className="mt-2 text-[10px] leading-none tracking-[0.18em] text-muted-foreground uppercase">
@@ -216,7 +218,11 @@ export function EventSlideshow({ events }: { events: EventListItem[] }) {
               exit={
                 reduced
                   ? { opacity: 0 }
-                  : { opacity: 0, y: -8, transition: { duration: 0.22, ease: EASE } }
+                  : {
+                      opacity: 0,
+                      y: -8,
+                      transition: { duration: 0.22, ease: EASE },
+                    }
               }
               transition={{ duration: reduced ? 0 : 0.5, ease: EASE }}
             >

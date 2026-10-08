@@ -178,7 +178,7 @@ export default function Contact() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.05, ease: EASE }}
-              className="mt-4 text-[36px] leading-[1.06] font-medium tracking-[-0.035em] text-balance sm:text-[46px]"
+              className="mt-4 text-[26px] leading-[1.2] font-light tracking-[-0.015em] text-balance sm:text-[34px]"
             >
               Talk to the people who{" "}
               <em className="font-display font-normal italic">run the desk</em>.
@@ -278,11 +278,7 @@ export default function Contact() {
                       </div>
                     </div>
 
-                    <Field
-                      id="contact-subject"
-                      label="Subject"
-                      hint="Optional"
-                    >
+                    <Field id="contact-subject" label="Subject" hint="Optional">
                       <Input
                         id="contact-subject"
                         value={subject}

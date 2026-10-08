@@ -192,7 +192,7 @@ export default function Report() {
             <header className="flex flex-wrap items-start justify-between gap-6 border-b border-border pb-7">
               <div>
                 <p className="label-eyebrow text-brand">Platform report</p>
-                <h1 className="mt-3 font-display text-[30px] leading-[1.12] tracking-[-0.022em] sm:text-[38px]">
+                <h1 className="mt-3 font-display text-[24px] leading-[1.2] tracking-[-0.008em] sm:text-[30px]">
                   The whole platform, measured.
                 </h1>
                 <p className="mt-4 max-w-xl text-[13px] leading-6 text-muted-foreground">

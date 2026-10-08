@@ -615,8 +615,8 @@ function DeleteProgrammeButton({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete “{name}”?</AlertDialogTitle>
           <AlertDialogDescription>
-            This removes the programme, its events, every booking and every
-            post attached to them. It cannot be undone.
+            This removes the programme, its events, every booking and every post
+            attached to them. It cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -854,7 +854,7 @@ export default function Admin() {
           <header className="flex flex-wrap items-start justify-between gap-6 border-b border-border pb-10">
             <div>
               <p className="label-eyebrow">Admin</p>
-              <h1 className="mt-4 text-[32px] leading-[1.06] font-medium tracking-[-0.035em] sm:text-[38px]">
+              <h1 className="mt-4 text-[26px] leading-[1.2] font-light tracking-[-0.015em] sm:text-[32px]">
                 Admin console
               </h1>
               <p className="mt-4 max-w-xl text-[14px] leading-7 text-muted-foreground">
@@ -1000,7 +1000,9 @@ export default function Admin() {
                                 {parts.day} {parts.month}
                               </span>
                               <span className="flex items-center gap-2 text-[12px] tabular-nums">
-                                <Dot className={paymentTone[row.paymentStatus]} />
+                                <Dot
+                                  className={paymentTone[row.paymentStatus]}
+                                />
                                 {row.paymentStatus === "waived"
                                   ? "No charge"
                                   : `${formatMoney(row.amountPaid || row.price)}`}

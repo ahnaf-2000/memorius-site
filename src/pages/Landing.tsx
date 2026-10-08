@@ -10,6 +10,8 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import {
   CometRail,
+  Float,
+  FloatingObjects,
   Magnetic,
   ParticleField,
   SpotlightCard,
@@ -338,7 +340,7 @@ function Stat({ count, label }: { count?: number; label: string }) {
   const shown = useCountUp(count);
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="font-display text-[28px] leading-none tabular-nums">
+      <span className="font-display text-[24px] leading-none tabular-nums">
         {count === undefined ? "—" : shown.toLocaleString("en-US")}
       </span>
       <span className="text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
@@ -471,7 +473,7 @@ function NextEventCard({ event }: { event: EventListItem }) {
             <span className="text-[10px] leading-none font-medium tracking-[0.14em] text-muted-foreground">
               {parts.month}
             </span>
-            <span className="font-display mt-1.5 text-[30px] leading-none tabular-nums">
+            <span className="font-display mt-1.5 text-[25px] leading-none tabular-nums">
               {parts.day}
             </span>
             <span className="mt-1.5 text-[10px] leading-none tracking-[0.1em] text-muted-foreground">
@@ -1450,7 +1452,7 @@ function ReportBand() {
             <div className="grid gap-10 p-8 sm:p-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-16">
               <div>
                 <p className="label-eyebrow text-brand">Platform report</p>
-                <h2 className="mt-4 font-display text-[28px] leading-[1.15] tracking-[-0.02em] text-balance sm:text-[36px]">
+                <h2 className="mt-4 font-display text-[22px] leading-[1.2] tracking-[-0.01em] text-balance sm:text-[28px]">
                   Every figure on this platform, in one document.
                 </h2>
                 <p className="mt-5 max-w-xl text-[14px] leading-7 text-muted-foreground">
@@ -1480,71 +1482,76 @@ function ReportBand() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border bg-background p-6">
-                <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
-                  <span className="label-eyebrow inline-flex items-center gap-2">
-                    <motion.span
-                      aria-hidden="true"
-                      className="size-1.5 rounded-full bg-brand"
-                      animate={
-                        reduced === true
-                          ? undefined
-                          : { opacity: [1, 0.25, 1], scale: [1, 1.5, 1] }
-                      }
-                      transition={{ duration: 2.6, repeat: Infinity }}
-                    />
-                    Generated live
-                  </span>
-                  <span className="text-[11px] tabular-nums text-muted-foreground">
-                    {stats === undefined
-                      ? "Reading the records…"
-                      : `Updated ${new Date(stats.generatedAt).toLocaleString(
-                          "en-GB",
-                          {
-                            day: "numeric",
-                            month: "short",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          },
-                        )}`}
-                  </span>
-                </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-7">
-                  <Stat count={stats?.programmes.count} label="Programmes" />
-                  <Stat count={stats?.events.upcoming} label="Events to come" />
-                  <Stat count={stats?.money.placesSold} label="Places sold" />
-                  <Stat
-                    count={stats?.events.placesLeft}
-                    label="Places still open"
-                  />
-                  <div className="flex flex-col gap-1.5">
-                    <span className="font-display text-[28px] leading-none tabular-nums">
+              <Float y={5} duration={14}>
+                <div className="rounded-lg border border-border bg-background p-6">
+                  <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
+                    <span className="label-eyebrow inline-flex items-center gap-2">
+                      <motion.span
+                        aria-hidden="true"
+                        className="size-1.5 rounded-full bg-brand"
+                        animate={
+                          reduced === true
+                            ? undefined
+                            : { opacity: [1, 0.25, 1], scale: [1, 1.5, 1] }
+                        }
+                        transition={{ duration: 2.6, repeat: Infinity }}
+                      />
+                      Generated live
+                    </span>
+                    <span className="text-[11px] tabular-nums text-muted-foreground">
                       {stats === undefined
-                        ? "—"
-                        : formatMoney(stats.money.collected)}
-                    </span>
-                    <span className="text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
-                      Collected so far
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <span className="font-display text-[28px] leading-none tabular-nums">
-                      {stats === undefined || stats.reviews.average === null
-                        ? "—"
-                        : `${stats.reviews.average}/5`}
-                    </span>
-                    <span className="text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
-                      From {stats?.reviews.count ?? "—"} reviews
+                        ? "Reading the records…"
+                        : `Updated ${new Date(stats.generatedAt).toLocaleString(
+                            "en-GB",
+                            {
+                              day: "numeric",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}`}
                     </span>
                   </div>
-                </div>
 
-                <p className="mt-6 border-t border-border pt-4 text-[11px] leading-5 text-muted-foreground">
-                  Aggregate figures only — no customer names, emails or
-                  references leave the platform.
-                </p>
-              </div>
+                  <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-7">
+                    <Stat count={stats?.programmes.count} label="Programmes" />
+                    <Stat
+                      count={stats?.events.upcoming}
+                      label="Events to come"
+                    />
+                    <Stat count={stats?.money.placesSold} label="Places sold" />
+                    <Stat
+                      count={stats?.events.placesLeft}
+                      label="Places still open"
+                    />
+                    <div className="flex flex-col gap-1.5">
+                      <span className="font-display text-[24px] leading-none tabular-nums">
+                        {stats === undefined
+                          ? "—"
+                          : formatMoney(stats.money.collected)}
+                      </span>
+                      <span className="text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+                        Collected so far
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="font-display text-[24px] leading-none tabular-nums">
+                        {stats === undefined || stats.reviews.average === null
+                          ? "—"
+                          : `${stats.reviews.average}/5`}
+                      </span>
+                      <span className="text-[11px] tracking-[0.12em] text-muted-foreground uppercase">
+                        From {stats?.reviews.count ?? "—"} reviews
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="mt-6 border-t border-border pt-4 text-[11px] leading-5 text-muted-foreground">
+                    Aggregate figures only — no customer names, emails or
+                    references leave the platform.
+                  </p>
+                </div>
+              </Float>
             </div>
           </div>
         </Rise>
@@ -1622,6 +1629,7 @@ export default function Landing() {
             className="drift-b pointer-events-none absolute top-44 -left-12 size-64 rounded-full bg-warm/20 blur-3xl"
           />
           <ParticleField className="inset-x-[-6%] top-[-4rem] h-[calc(100%+6rem)] w-[112%] opacity-80" />
+          <FloatingObjects />
           <div className="relative grid gap-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-20">
             <div>
               <Reveal>
@@ -1634,7 +1642,7 @@ export default function Landing() {
               </Reveal>
 
               <Reveal delay={0.06}>
-                <h1 className="mt-8 text-[44px] leading-[1.02] font-medium tracking-[-0.04em] text-balance sm:text-[62px]">
+                <h1 className="mt-8 text-[30px] leading-[1.14] font-light tracking-[-0.015em] text-balance sm:text-[40px]">
                   <SplitWords
                     text="Find your next event, and"
                     delay={heroDelay}
@@ -2003,7 +2011,7 @@ export default function Landing() {
             <div className="grid gap-16 lg:grid-cols-2 lg:gap-24">
               <div>
                 <p className="label-eyebrow">For businesses</p>
-                <h2 className="mt-3 text-[26px] leading-[1.2] font-medium tracking-[-0.028em] text-balance sm:text-[32px]">
+                <h2 className="mt-3 text-[20px] leading-[1.35] font-normal tracking-[-0.01em] text-balance sm:text-[24px]">
                   Run the programme. Skip the spreadsheet.
                 </h2>
                 <p className="mt-5 max-w-lg text-[14px] leading-7 text-muted-foreground">
@@ -2174,13 +2182,14 @@ export default function Landing() {
             aria-hidden="true"
             className="breathe glow-soft pointer-events-none absolute inset-x-0 top-0 h-72"
           />
+          <FloatingObjects />
           <div className="relative mx-auto w-full max-w-6xl px-5 py-24 text-center sm:px-8 sm:py-32">
             <motion.h2
               initial={{ opacity: 0, y: 24, scale: 0.97 }}
               whileInView={{ opacity: 1, y: 0, scale: 1 }}
               viewport={{ once: true, margin: "-80px" }}
               transition={{ type: "spring", stiffness: 170, damping: 20 }}
-              className="font-display mx-auto max-w-3xl text-[34px] leading-[1.12] tracking-[-0.02em] text-balance sm:text-[46px]"
+              className="font-display mx-auto max-w-3xl text-[26px] leading-[1.18] tracking-[-0.008em] text-balance sm:text-[34px]"
             >
               Take your place in <em className="italic">under a minute</em>.
             </motion.h2>

@@ -183,6 +183,128 @@ export function Magnetic({
 }
 
 /* ------------------------------------------------------------------ *
+ * Float: a slow drift for anything that should not sit perfectly still.
+ *
+ * Amplitude, duration and phase are per instance, so two objects drifting
+ * beside each other never beat together — the small differences are what
+ * make a page feel alive instead of looping.
+ * ------------------------------------------------------------------ */
+
+export function Float({
+  children,
+  className,
+  y = 8,
+  x = 0,
+  rotate = 0,
+  duration = 12,
+  delay = 0,
+}: {
+  children: ReactNode;
+  className?: string;
+  y?: number;
+  x?: number;
+  rotate?: number;
+  duration?: number;
+  delay?: number;
+}) {
+  const reduced = useReducedMotion();
+
+  return (
+    <motion.div
+      className={className}
+      animate={
+        reduced
+          ? undefined
+          : { y: [0, -y, 0], x: [0, x, 0], rotate: [0, rotate, 0] }
+      }
+      transition={
+        reduced
+          ? undefined
+          : { duration, repeat: Infinity, ease: "easeInOut", delay }
+      }
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Objects adrift.
+ *
+ * The layer that holds a section's edges: a ticket stub, a rating, a
+ * dashed ring, a grid tile and a few loose dots, each on its own clock.
+ * They sit behind the content with no pointer events and no meaning —
+ * depth rather than decoration, and only on a wide screen.
+ * ------------------------------------------------------------------ */
+
+export function FloatingObjects({ className }: { className?: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(
+        "pointer-events-none absolute inset-0 hidden overflow-hidden lg:block",
+        className,
+      )}
+    >
+      {/* A ticket stub, torn along one edge. */}
+      <div
+        className="adrift absolute top-[13%] left-[2%] flex h-14 w-24 items-center gap-2.5 rounded-xl border border-border bg-card/70 px-2.5 shadow-lift backdrop-blur-sm"
+        style={{ animationDelay: "-2.5s" }}
+      >
+        <span className="size-6 shrink-0 rounded-md bg-brand-soft" />
+        <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <span className="h-1.5 w-full rounded-full bg-foreground/12" />
+          <span className="h-1.5 w-2/3 rounded-full bg-foreground/12" />
+        </span>
+      </div>
+
+      {/* A rating, four warm dots and one still to come. */}
+      <div
+        className="adrift-low absolute bottom-[16%] left-[7%] flex h-8 items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 shadow-lift backdrop-blur-sm"
+        style={{ animationDelay: "-6s" }}
+      >
+        {[0, 1, 2, 3].map((dot) => (
+          <span key={dot} className="size-1.5 rounded-full bg-warm/70" />
+        ))}
+        <span className="size-1.5 rounded-full bg-foreground/12" />
+      </div>
+
+      {/* A hairline ring, turning very slowly. */}
+      <span
+        className="turn-slow absolute top-[8%] right-[7%] size-24 rounded-full border border-dashed border-brand-line/70"
+        style={{ animationDelay: "-9s" }}
+      />
+
+      {/* A grid tile, lifted out of the veil. */}
+      <div
+        className="adrift-wide absolute top-[58%] right-[3%] grid size-16 grid-cols-3 place-items-center rounded-2xl border border-border bg-card/70 p-2 shadow-lift backdrop-blur-sm"
+        style={{ animationDelay: "-4s" }}
+      >
+        {Array.from({ length: 9 }).map((_, dot) => (
+          <span key={dot} className="size-1 rounded-full bg-foreground/15" />
+        ))}
+      </div>
+
+      {/* Three loose dots, keeping their own time. */}
+      <span
+        className="adrift absolute bottom-[9%] left-[46%] flex items-center gap-2"
+        style={{ animationDelay: "-11s" }}
+      >
+        <span className="size-1.5 rounded-full bg-brand/50" />
+        <span className="size-2.5 rounded-full bg-warm/40" />
+        <span className="size-1.5 rounded-full bg-plum/40" />
+      </span>
+
+      {/* One soft companion, well behind everything. */}
+      <span
+        className="adrift-wide absolute -top-10 left-[38%] size-40 rounded-full bg-warm/10 blur-2xl"
+        style={{ animationDelay: "-8s" }}
+      />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
  * Split reveal: each word rises out of its own mask, in order. The
  * headline arrives as a sentence being written rather than a block
  * fading in.
