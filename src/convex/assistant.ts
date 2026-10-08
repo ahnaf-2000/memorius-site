@@ -26,8 +26,13 @@ import type { PlatformOverview } from "./insights";
  * dock is never a dead end.
  */
 
-/** How long a model may take before the catalogue answers instead. */
-const MODEL_TIMEOUT_MS = 12_000;
+/**
+ * How long a model may take before the catalogue answers instead. The
+ * built-in model is a reasoning model and needs ~10–20s on a real question;
+ * 12s cut genuine answers off mid-thought, and a chat dock that silently
+ * swaps in the rules is worse than one that waits another moment.
+ */
+const MODEL_TIMEOUT_MS = 45_000;
 /** A cached answer is reused for this long, keyed by the question and data. */
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -386,6 +391,23 @@ function fallbackAnswer(question: string, data: Snapshot) {
 }
 
 /**
+ * The refusal in a provider's own words, when it explains itself in JSON.
+ * Otherwise the first part of the body, so a failure is diagnosable rather
+ * than a bare status code.
+ */
+async function errorReason(response: Response): Promise<string> {
+  const body = (await response.text()).slice(0, 400);
+  try {
+    const parsed = JSON.parse(body) as { error?: { message?: unknown } };
+    const message = parsed.error?.message;
+    if (typeof message === "string") return `: ${message.slice(0, 160)}`;
+  } catch {
+    // Not JSON — the raw beginning is the best clue available.
+  }
+  return body.length > 0 ? `: ${body.slice(0, 160)}` : "";
+}
+
+/**
  * One call to the chosen model, with a hard ceiling on how long it may take. A
  * slow answer is worse than a catalogue answer, so the request is aborted and
  * the grounding snapshot takes over.
@@ -431,6 +453,7 @@ async function callProvider(
   }
 
   const endpoint = provider.endpoint ?? GATEWAY_ENDPOINT;
+  const gateway = provider.kind === "gateway";
 
   const response = await fetch(endpoint, {
     method: "POST",
@@ -442,7 +465,15 @@ async function callProvider(
     body: JSON.stringify({
       model: name,
       temperature: 0.4,
-      max_tokens: 700,
+      // The built-in model thinks before it writes, and its thinking is billed
+      // to the same budget as the answer — 700 was spent on thought alone for
+      // harder questions, which the gateway rejects as an empty completion.
+      // It gets a larger ceiling; the answer itself stays short by instruction.
+      max_tokens: gateway ? 3000 : 700,
+      // A little thought, not a lot: enough for a judgement, quick enough for
+      // a chat dock. Other providers reject the field outright, so it is only
+      // sent to the built-in model.
+      ...(gateway ? { reasoning_effort: "low" } : {}),
       messages: [
         { role: "system", content: system },
         ...history.slice(-6),
@@ -451,7 +482,9 @@ async function callProvider(
     }),
   });
   if (!response.ok) {
-    throw new Error(`${provider.label} replied ${response.status}`);
+    throw new Error(
+      `${provider.label} replied ${response.status}${await errorReason(response)}`,
+    );
   }
   const payload = (await response.json()) as {
     choices?: { message?: { content?: string } }[];
