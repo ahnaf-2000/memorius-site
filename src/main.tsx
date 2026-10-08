@@ -2,6 +2,8 @@ import "@vly-ai/integrations";
 import { Toaster } from "@/components/ui/sonner";
 import { AssistantDock } from "@/components/site/AssistantDock";
 import { EasterEggs } from "@/components/site/EasterEggs";
+import { KeepsakeTray } from "@/components/site/KeepsakeTray";
+import { Celebrate } from "@/components/site/LiveMotion";
 import { OpeningIntro } from "@/components/site/OpeningIntro";
 import { PageTransition } from "@/components/site/PageTransition";
 import { ScrollProgress } from "@/components/site/ScrollProgress";
@@ -266,6 +268,7 @@ createRoot(document.getElementById("root")!).render(
           {/* Chrome that stays out of a printed page: see the print rules. */}
           <div data-app-chrome="">
             <AssistantDock />
+            <KeepsakeTray />
             <OpeningIntro />
             <SecretAdmin />
           </div>
@@ -274,6 +277,8 @@ createRoot(document.getElementById("root")!).render(
           <ScrollProgress />
           <EasterEggs />
           <Toaster />
+          {/* One confetti layer for the whole product: every page can burst. */}
+          <Celebrate />
         </div>
       </ConvexAuthProvider>
     </RootErrorBoundary>

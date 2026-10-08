@@ -1,3 +1,4 @@
+import { celebrate } from "@/components/site/LiveMotion";
 import { MethodPicker, TestModeNote } from "@/components/site/PaymentMethods";
 import {
   PromoCodeField,
@@ -11,6 +12,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@/hooks/use-auth";
 import { errorMessage, formatMoney } from "@/lib/format";
+import { award } from "@/lib/keepsakes";
 import { useActiveCountry } from "@/lib/pricing";
 import type { PaymentMethod, ProductView } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -80,7 +82,10 @@ export function EventShop({
   );
   // A code can only take money off what is actually in the basket, so the
   // preview is recalculated here and re-checked on the server at checkout.
-  const applied = promo === null ? null : { ...promo, discount: Math.min(promo.discount, subtotal) };
+  const applied =
+    promo === null
+      ? null
+      : { ...promo, discount: Math.min(promo.discount, subtotal) };
   const discount = applied?.discount ?? 0;
   const total = Math.max(0, subtotal - discount);
 
@@ -127,6 +132,8 @@ export function EventShop({
       toast.success("Order placed", {
         description: `Reference ${result.reference} · collect at the desk`,
       });
+      award("journey:order");
+      celebrate({ count: 70 });
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -351,7 +358,10 @@ export function EventShop({
                   <p className="text-[13px] leading-6 text-muted-foreground">
                     Sign in to place this order — your basket stays as it is.
                   </p>
-                  <Button asChild className="mt-4 h-9 rounded-full px-4 text-[13px]">
+                  <Button
+                    asChild
+                    className="mt-4 h-9 rounded-full px-4 text-[13px]"
+                  >
                     <Link to={`/auth?returnTo=%2Fevents%2F${eventSlug}`}>
                       Sign in and continue
                     </Link>

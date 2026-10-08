@@ -3,11 +3,12 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
+import { award } from "@/lib/keepsakes";
 import { formatMoney } from "@/lib/format";
 import { useQuery } from "convex/react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Download, Printer, Sparkles } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Link } from "react-router";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -32,6 +33,11 @@ export default function Report() {
   const reduced = useReducedMotion();
   const stats = useQuery(api.insights.overview);
   const loading = stats === undefined;
+
+  // Reading the report is one of the keepsakes; the tray keeps the record.
+  useEffect(() => {
+    award("journey:report");
+  }, []);
 
   const generated =
     stats === undefined

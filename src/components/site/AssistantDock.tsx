@@ -1,10 +1,12 @@
+import { celebrate } from "@/components/site/LiveMotion";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
+import { award } from "@/lib/keepsakes";
 import type { ChatTurn } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAction, useQuery } from "convex/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { MessagesSquare, Send, Sparkles, X } from "lucide-react";
+import { Check, Copy, MessagesSquare, Send, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
@@ -29,6 +31,45 @@ const SUGGESTIONS = [
   "Draft an invitation for the next one",
   "What does the platform report say?",
 ];
+
+/**
+ * The answer, back on the clipboard. Copying is immediate and silent; the tick
+ * that replaces the icon is the whole acknowledgement.
+ */
+function CopyReply({ text }: { text: string }) {
+  const reduced = useReducedMotion();
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // A browser can refuse the clipboard; the text stays selectable on screen.
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void copy()}
+      aria-label={copied ? "Copied" : "Copy this answer"}
+      className="ml-auto inline-flex items-center gap-1 rounded-full border border-transparent px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:border-border hover:text-foreground focus-visible:border-border focus-visible:text-foreground"
+    >
+      <motion.span
+        key={copied ? "copied" : "copy"}
+        initial={reduced ? { opacity: 0 } : { opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: reduced ? 0.1 : 0.22, ease: EASE }}
+        className="inline-flex items-center gap-1"
+      >
+        {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+        {copied ? "Copied" : "Copy"}
+      </motion.span>
+    </button>
+  );
+}
 
 /**
  * The launcher is never hidden and never still: it breathes with the page,
@@ -141,11 +182,16 @@ export function AssistantDock() {
   const [pending, setPending] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    endRef.current?.scrollIntoView({ block: "nearest" });
-  }, [open, turns.length, pending]);
+    // The transcript glides to the newest line rather than jumping to it.
+    endRef.current?.scrollIntoView({
+      block: "nearest",
+      behavior: reduced ? "auto" : "smooth",
+    });
+  }, [open, turns.length, pending, reduced]);
 
   useEffect(() => {
     if (!open) return;
@@ -180,6 +226,19 @@ export function AssistantDock() {
             : "Catalogue mode",
         },
       ]);
+      // Asking Memo is one of the keepsakes — the first time, and only then.
+      award("journey:memo");
+      // A model answer lands with one small burst at the send button.
+      if (result.configured) {
+        const rect = panelRef.current?.getBoundingClientRect();
+        if (rect !== undefined) {
+          celebrate({
+            x: rect.left + rect.width / 2,
+            y: rect.bottom - 54,
+            count: 16,
+          });
+        }
+      }
     } catch {
       setTurns((previous) => [
         ...previous,
@@ -220,6 +279,7 @@ export function AssistantDock() {
         {open && (
           <motion.div
             key="memo-panel"
+            ref={panelRef}
             initial={
               reduced ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.95 }
             }
@@ -282,42 +342,51 @@ export function AssistantDock() {
             </div>
 
             <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-              {turns.map((turn, index) => (
-                <motion.div
-                  key={index}
-                  initial={
-                    reduced
-                      ? { opacity: 0 }
-                      : { opacity: 0, y: 10, scale: 0.98 }
-                  }
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{
-                    duration: 0.35,
-                    ease: EASE,
-                    delay: Math.min(index * 0.06, 0.3),
-                  }}
-                  className={cn(
-                    "flex",
-                    turn.role === "user" ? "justify-end" : "justify-start",
-                  )}
-                >
-                  <div
+              {turns.map((turn, index) => {
+                const hasMeta = turn.meta !== null && turn.meta !== undefined;
+                const canCopy = turn.role === "assistant" && index > 0;
+                return (
+                  <motion.div
+                    key={index}
+                    initial={
+                      reduced
+                        ? { opacity: 0 }
+                        : { opacity: 0, y: 10, scale: 0.98 }
+                    }
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{
+                      duration: 0.35,
+                      ease: EASE,
+                      delay: Math.min(index * 0.06, 0.3),
+                    }}
                     className={cn(
-                      "max-w-[92%] rounded-lg px-3.5 py-2.5 text-[12.5px] leading-6 whitespace-pre-line",
-                      turn.role === "user"
-                        ? "bg-foreground text-background"
-                        : "border border-border bg-background text-foreground",
+                      "flex",
+                      turn.role === "user" ? "justify-end" : "justify-start",
                     )}
                   >
-                    {turn.content}
-                    {turn.meta !== null && turn.meta !== undefined && (
-                      <span className="mt-2 block text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
-                        {turn.meta}
-                      </span>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
+                    <div
+                      className={cn(
+                        "max-w-[92%] rounded-lg px-3.5 py-2.5 text-[12.5px] leading-6 whitespace-pre-line",
+                        turn.role === "user"
+                          ? "bg-foreground text-background"
+                          : "border border-border bg-background text-foreground",
+                      )}
+                    >
+                      {turn.content}
+                      {(hasMeta || canCopy) && (
+                        <span className="mt-2 flex items-center gap-2">
+                          {hasMeta && (
+                            <span className="text-[10px] tracking-[0.1em] text-muted-foreground uppercase">
+                              {turn.meta}
+                            </span>
+                          )}
+                          {canCopy && <CopyReply text={turn.content} />}
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
               <AnimatePresence>
                 {pending && (
                   <motion.div

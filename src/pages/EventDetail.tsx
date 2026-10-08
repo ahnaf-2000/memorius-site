@@ -6,11 +6,9 @@ import {
 import { EventReviews } from "@/components/site/EventReviews";
 import { EventShop } from "@/components/site/EventShop";
 import { EventSponsors } from "@/components/site/EventSponsors";
-import {
-  MethodPicker,
-  TestModeNote,
-} from "@/components/site/PaymentMethods";
+import { MethodPicker, TestModeNote } from "@/components/site/PaymentMethods";
 import { SiteFooter } from "@/components/site/SiteFooter";
+import { celebrate } from "@/components/site/LiveMotion";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import {
   AlertDialog,
@@ -43,6 +41,7 @@ import {
   relativeDay,
   seatSummary,
 } from "@/lib/format";
+import { award } from "@/lib/keepsakes";
 import type { CommentView, EventView, PaymentMethod } from "@/lib/types";
 import { useMutation, useQuery } from "convex/react";
 import { formatDistanceToNowStrict } from "date-fns";
@@ -233,6 +232,12 @@ function BookingPanel({
             : "Place booked",
         { description: `Reference ${result.reference} · ${event.title}` },
       );
+      // A place taken is the moment worth marking: kept in the tray, and
+      // answered on the page with one burst at the point of the tap.
+      if (!result.alreadyBooked) {
+        award("journey:booked");
+        celebrate({ count: 140 });
+      }
     } catch (submitError) {
       setError(errorMessage(submitError));
     } finally {
@@ -326,8 +331,9 @@ function BookingPanel({
             {discountApplied > 0 && (
               <p className="note-open mt-3 flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-[11px]">
                 <BadgeCheck className="size-3.5" />
-                {receipt?.promoCode ?? activeBooking?.promoCode ?? promo?.code}
-                {" "}
+                {receipt?.promoCode ??
+                  activeBooking?.promoCode ??
+                  promo?.code}{" "}
                 took {formatMoney(discountApplied)} off
               </p>
             )}
@@ -361,9 +367,7 @@ function BookingPanel({
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Keep booking</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => void release(bookingId)}
-                    >
+                    <AlertDialogAction onClick={() => void release(bookingId)}>
                       Cancel booking
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -389,7 +393,9 @@ function BookingPanel({
             size="sm"
             className="mt-5 h-9 w-full rounded-full shadow-none"
           >
-            <Link to={programmeSlug ? `/programmes/${programmeSlug}` : "/events"}>
+            <Link
+              to={programmeSlug ? `/programmes/${programmeSlug}` : "/events"}
+            >
               See the full programme
             </Link>
           </Button>

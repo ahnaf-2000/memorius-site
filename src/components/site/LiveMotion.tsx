@@ -13,6 +13,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { award, railKeepsakeId } from "@/lib/keepsakes";
 import { cn } from "@/lib/utils";
 
 /** One easing for every entrance on the page. */
@@ -600,6 +601,8 @@ export function CometRail({
                     count: 16,
                   });
                   setFound((previous) => [...previous, item.name]);
+                  // Every chip is a keepsake, kept in the tray for good.
+                  award(railKeepsakeId(item.name));
                 }}
                 style={{ ["--chip-tint" as string]: item.tint }}
                 className={cn(

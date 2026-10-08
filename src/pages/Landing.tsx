@@ -9,7 +9,6 @@ import { SectionHeading } from "@/components/site/SectionHeading";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import {
-  Celebrate,
   CometRail,
   Magnetic,
   ParticleField,
@@ -2251,9 +2250,6 @@ export default function Landing() {
       </main>
 
       <SiteFooter />
-
-      {/* One layer for confetti: any control on the page can ask for a burst. */}
-      <Celebrate />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { celebrate } from "@/components/site/LiveMotion";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,13 +15,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 
-function Stars({
-  value,
-  size = "size-3.5",
-}: {
-  value: number;
-  size?: string;
-}) {
+function Stars({ value, size = "size-3.5" }: { value: number; size?: string }) {
   return (
     <span className="flex items-center gap-0.5" aria-hidden="true">
       {[1, 2, 3, 4, 5].map((step) => (
@@ -28,9 +23,7 @@ function Stars({
           key={step}
           className={cn(
             size,
-            step <= Math.round(value)
-              ? "fill-warm text-warm"
-              : "text-border",
+            step <= Math.round(value) ? "fill-warm text-warm" : "text-border",
           )}
         />
       ))}
@@ -64,6 +57,8 @@ export function EventReviews({ eventId }: { eventId: Id<"events"> }) {
       setBody("");
       setEditing(false);
       toast.success(mineId === null ? "Review posted" : "Review updated");
+      // Saying something in public earns a small acknowledgement.
+      celebrate({ count: 44 });
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
