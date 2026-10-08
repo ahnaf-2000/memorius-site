@@ -9,6 +9,7 @@ import {
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { PALETTES, THEMES, useTheme } from "@/hooks/use-theme";
+import { LANGUAGES, setLanguage, useLanguage, useT } from "@/lib/i18n";
 import {
   COUNTRIES,
   CURRENCIES,
@@ -21,7 +22,7 @@ import {
 } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import { useMutation } from "convex/react";
-import { Check, Moon, Palette, Sun } from "lucide-react";
+import { Check, Languages, Moon, Palette, Sun } from "lucide-react";
 
 function MenuRow({
   selected,
@@ -82,12 +83,18 @@ export function ThemeToggle() {
 }
 
 /**
- * Appearance, palette and market in one place. The country chosen here is what
+ * Appearance, language and market in one place. The country chosen here is what
  * every price on the site is quoted in — and it is remembered on the account
  * when someone is signed in, so their phone and their desk agree.
+ *
+ * The language sits above all of it and answers to nobody else: it is only
+ * ever the reader's own choice, so changing country or currency here — or
+ * having one detected on arrival — leaves the words exactly as they were.
  */
 export function PreferencesMenu() {
   const { theme, setTheme, palette, setPalette } = useTheme();
+  const language = useLanguage();
+  const t = useT();
   const country = useActiveCountry();
   const currency = useActiveCurrency();
   const { isAuthenticated } = useAuth();
@@ -129,7 +136,7 @@ export function PreferencesMenu() {
           variant="ghost"
           size="sm"
           className="h-8 gap-1.5 rounded-full px-2.5 text-[12px] text-muted-foreground hover:text-foreground"
-          aria-label="Appearance and region"
+          aria-label="Appearance, language and region"
         >
           <span aria-hidden="true" className="text-[13px] leading-none">
             {country.flag}
@@ -138,8 +145,30 @@ export function PreferencesMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72 p-2">
+        {/* Language first, and never anything but the reader's own choice: it is
+            not inferred from the country list further down. */}
         <DropdownMenuLabel className="px-2.5 text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
-          Appearance
+          {t("prefs.language")}
+        </DropdownMenuLabel>
+        <div className="max-h-56 overflow-y-auto pr-1">
+          {LANGUAGES.map((option) => (
+            <MenuRow
+              key={option.code}
+              selected={language === option.code}
+              title={`${option.flag}  ${option.native}`}
+              detail={option.name}
+              icon={<Languages className="size-4" />}
+              onClick={() => setLanguage(option.code)}
+            />
+          ))}
+        </div>
+        <p className="px-2.5 pt-2 text-[11px] leading-5 text-muted-foreground">
+          {t("prefs.languageNote")}
+        </p>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="px-2.5 text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
+          {t("prefs.appearance")}
         </DropdownMenuLabel>
         {THEMES.map((option) => (
           <MenuRow
@@ -160,7 +189,7 @@ export function PreferencesMenu() {
 
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="px-2.5 text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
-          Palette
+          {t("prefs.palette")}
         </DropdownMenuLabel>
         {PALETTES.map((option) => (
           <MenuRow
@@ -179,7 +208,7 @@ export function PreferencesMenu() {
 
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="px-2.5 text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
-          Currency
+          {t("prefs.currency")}
         </DropdownMenuLabel>
         <div className="max-h-64 overflow-y-auto pr-1">
           {CURRENCIES.map((option) => (
@@ -195,7 +224,7 @@ export function PreferencesMenu() {
 
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="px-2.5 text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
-          Region
+          {t("prefs.region")}
         </DropdownMenuLabel>
         <div className="max-h-64 overflow-y-auto pr-1">
           {COUNTRIES.map((option) => (

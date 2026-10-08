@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { initials } from "@/lib/format";
+import { useT, type TranslationKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   ArrowRight,
@@ -33,15 +34,17 @@ import {
 import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 
-const PRIMARY_NAV = [
-  { to: "/events", label: "Catalogue" },
-  { to: "/programmes", label: "Programmes" },
-  { to: "/report", label: "Report" },
-  { to: "/contact", label: "Contact" },
+// Labels are dictionary keys, so the navigation follows the reader's language.
+const PRIMARY_NAV: { to: string; label: TranslationKey }[] = [
+  { to: "/events", label: "nav.catalogue" },
+  { to: "/programmes", label: "nav.programmes" },
+  { to: "/report", label: "nav.report" },
+  { to: "/contact", label: "nav.contact" },
 ];
 
 export function SiteHeader() {
   const { isAuthenticated, user, signOut } = useAuth();
+  const t = useT();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -87,12 +90,12 @@ export function SiteHeader() {
         <nav className="hidden items-center gap-7 md:flex">
           {PRIMARY_NAV.map((item) => (
             <NavLink key={item.to} to={item.to} className={navLink}>
-              {item.label}
+              {t(item.label)}
             </NavLink>
           ))}
           {isAuthenticated && (
             <NavLink to="/admin" className={navLink}>
-              Admin
+              {t("nav.admin")}
             </NavLink>
           )}
         </nav>
@@ -114,7 +117,7 @@ export function SiteHeader() {
               >
                 <Link to="/dashboard">
                   <LayoutDashboard className="size-3.5" />
-                  My bookings
+                  {t("nav.myBookings")}
                 </Link>
               </Button>
               <DropdownMenu>
@@ -137,14 +140,14 @@ export function SiteHeader() {
                     onSelect={() => navigate("/dashboard")}
                   >
                     <LayoutDashboard className="mr-2 size-4" />
-                    My bookings
+                    {t("nav.myBookings")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="cursor-pointer"
                     onSelect={() => navigate("/admin")}
                   >
                     <Settings2 className="mr-2 size-4" />
-                    Admin console
+                    {t("nav.admin")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -152,7 +155,7 @@ export function SiteHeader() {
                     onSelect={handleSignOut}
                   >
                     <LogOut className="mr-2 size-4" />
-                    Sign out
+                    {t("nav.signOut")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -165,7 +168,7 @@ export function SiteHeader() {
                 size="sm"
                 className="hidden text-[13px] sm:inline-flex"
               >
-                <Link to="/auth?returnTo=%2Fdashboard">Sign in</Link>
+                <Link to="/auth?returnTo=%2Fdashboard">{t("nav.signIn")}</Link>
               </Button>
               <Button
                 asChild
@@ -173,7 +176,7 @@ export function SiteHeader() {
                 className="h-8 gap-1.5 rounded-full px-4 text-[13px]"
               >
                 <Link to="/events">
-                  Browse events
+                  {t("nav.browseEvents")}
                   <ArrowRight className="size-3.5" />
                 </Link>
               </Button>
@@ -206,7 +209,7 @@ export function SiteHeader() {
                       to={item.to}
                       className="rounded-md px-3 py-3 text-[15px] tracking-[-0.01em] transition-colors hover:bg-accent"
                     >
-                      {item.label}
+                      {t(item.label)}
                     </Link>
                   </SheetClose>
                 ))}
@@ -217,7 +220,7 @@ export function SiteHeader() {
                         to="/dashboard"
                         className="rounded-md px-3 py-3 text-[15px] tracking-[-0.01em] transition-colors hover:bg-accent"
                       >
-                        My bookings
+                        {t("nav.myBookings")}
                       </Link>
                     </SheetClose>
                     <SheetClose asChild>
@@ -225,7 +228,7 @@ export function SiteHeader() {
                         to="/admin"
                         className="rounded-md px-3 py-3 text-[15px] tracking-[-0.01em] transition-colors hover:bg-accent"
                       >
-                        Admin
+                        {t("nav.admin")}
                       </Link>
                     </SheetClose>
                   </>
@@ -241,12 +244,14 @@ export function SiteHeader() {
                       void handleSignOut();
                     }}
                   >
-                    Sign out
+                    {t("nav.signOut")}
                   </Button>
                 ) : (
                   <SheetClose asChild>
                     <Button asChild className="w-full">
-                      <Link to="/auth?returnTo=%2Fdashboard">Sign in</Link>
+                      <Link to="/auth?returnTo=%2Fdashboard">
+                        {t("nav.signIn")}
+                      </Link>
                     </Button>
                   </SheetClose>
                 )}
