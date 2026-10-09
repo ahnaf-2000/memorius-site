@@ -19,8 +19,12 @@ This project uses the following tech stack:
 
 This project is set up already and running on a cloud environment.
 
-Deployment URL: memorius.freebuff.app
-Third-party services/APIs : Resend API
-AI tools/features used: freebuff
-Known limitations: Payment gateway is not established as it needs trade license.
-License: MIT License
+#Deployment URL: memorius.freebuff.app
+
+#Third-party services/APIs : Resend API
+
+#AI tools/features used: freebuff
+
+#Known limitations: Payment gateway is not established as it needs trade license.
+
+#License: MIT License
