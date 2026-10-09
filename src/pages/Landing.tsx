@@ -51,25 +51,39 @@ import {
 } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
+  Accessibility,
   ArrowRight,
+  BadgeCheck,
+  Bot,
   Building2,
   CalendarCheck,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
+  CreditCard,
   FileText,
   GaugeCircle,
   Globe,
   Handshake,
+  Images,
+  KeyRound,
+  Languages,
   Layers3,
   Megaphone,
   MessageSquare,
+  MessagesSquare,
+  MonitorSmartphone,
+  MousePointerClick,
   Printer,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Star,
   Ticket,
   TrendingUp,
   UserCheck,
+  Users,
+  Wallet,
   Zap,
 } from "lucide-react";
 import {
@@ -648,81 +662,192 @@ function NextEventCard({ events }: { events: EventListItem[] }) {
 }
 
 /**
- * The five things this platform has to get right.
+ * What the platform is made of.
  *
- * A club does not need a hundred features; it needs a directory people can
- * search, a registration that takes a minute, a console that shows who is
- * coming, a way to tell everyone when a room changes, and a roster that
- * records who actually turned up. Everything else on the site exists to
- * support those five.
+ * Sixteen capabilities, each one something the product actually does rather
+ * than something it intends to: the booking engine, the ledgers, the console a
+ * club shares between its organizers, the roster at the door, and the parts
+ * nobody notices until they are missing — focus rings, skeletons, an
+ * apologetic 404.
  */
-function EssentialFeatures() {
+function PlatformCapabilities() {
   const reduced = useReducedMotion();
   const cards = [
     {
       number: "01",
       icon: <CalendarCheck className="size-5" />,
-      title: "Every fest, and every event inside it",
-      copy: "One directory of programmes — Tech Carnival, Winter Fest, Freshers Week — each opening onto its own line-up with dates, venues, places left and the guest list they carry.",
+      title: "Universal Multi-Device Flexibility",
+      copy: "Operates seamlessly across mobile, desktop, tablet and TV displays, with app-like installation from the browser.",
       points: [
-        "Search the whole catalogue, or filter by category and eligibility",
-        "Event cards carry the date, venue, capacity and availability",
-        "12 fests and their events are seeded, so nothing has to be created to look around",
+        "One responsive layout, an installable manifest and no zooming anywhere",
+      ],
+      to: "/events",
+      cta: "Open it on your phone",
+    },
+    {
+      number: "02",
+      icon: <Accessibility className="size-5" />,
+      title: "Inclusive & Adaptive Interface",
+      copy: "A dedicated colour-blind palette, instant light and dark toggles, motion on request, and skeleton loaders that hold the layout still while data arrives.",
+      points: [
+        "Theme, motion and contrast are the reader's choice, remembered between visits",
+      ],
+      to: "/dashboard",
+      cta: "See it in your account",
+    },
+    {
+      number: "03",
+      icon: <Ticket className="size-5" />,
+      title: "Comprehensive Booking Engine",
+      copy: "Real-time availability, dynamic waiting lists, minute-precise scheduling, promotional codes and category search filters.",
+      points: [
+        "Seats left are derived live and the waiting list promotes itself when a place is released",
+      ],
+      to: "/events",
+      cta: "Book a place",
+    },
+    {
+      number: "04",
+      icon: <Wallet className="size-5" />,
+      title: "Enterprise Financial Management",
+      copy: "Unified ledgers, multi-currency quoting, seasonal revenue analytics and paper invoicing.",
+      points: [
+        "Shop orders, sponsorship and places are read from one ledger, in the reader's own currency",
+      ],
+      to: "/admin",
+      cta: "Open Revenue",
+    },
+    {
+      number: "05",
+      icon: <CreditCard className="size-5" />,
+      title: "Flexible Payment Workflows",
+      copy: "Pay-later and settle-at-the-desk, custom cancellation fees, and clean modular room for more gateways.",
+      points: [
+        "A policy the organizer sets, quoted before anyone books and settled at the moment of release",
+      ],
+      to: "/events",
+      cta: "Try releasing a place",
+    },
+    {
+      number: "06",
+      icon: <Users className="size-5" />,
+      title: "Collaborative Organizer Consoles",
+      copy: "Dedicated business consoles with multi-user role permissions, customisable confirmation emails and booking-deadline tracking.",
+      points: [
+        "Invite managers, editors and viewers by email — each keeps their own name on every decision",
+      ],
+      to: "/admin",
+      cta: "Invite a collaborator",
+    },
+    {
+      number: "07",
+      icon: <ClipboardCheck className="size-5" />,
+      title: "Streamlined Onsite Operations",
+      copy: "Automated door lists, merchandise and drinks stock ledgers, and printable physical reports for the desk.",
+      points: [
+        "Search the guest list, check people in with a timestamp, and print the day's record",
+      ],
+      to: "/admin",
+      cta: "Check someone in",
+    },
+    {
+      number: "08",
+      icon: <Handshake className="size-5" />,
+      title: "Monetization & Sponsor Pipeline",
+      copy: "Sponsor tier management, pipeline tracking, status monitoring and campaign reach in one place.",
+      points: [
+        "A pledge moves from promise to confirmed to paid, and every tier is visible on the programme page",
+      ],
+      to: "/programmes",
+      cta: "See the sponsor tiers",
+    },
+    {
+      number: "09",
+      icon: <Images className="size-5" />,
+      title: "Immersive Attendee Discovery",
+      copy: "Photo-led cards, daily media slideshows, shareable event links and clean, readable web URLs.",
+      points: [
+        "Every event has a page worth sending to a friend, with a slug a human can read",
       ],
       to: "/events",
       cta: "Browse the catalogue",
     },
     {
-      number: "02",
-      icon: <Ticket className="size-5" />,
-      title: "A registration that takes a minute",
-      copy: "Pick a place, say who you are on the guest list, confirm. The reference is issued on the spot, the confirmation email with its printable invoice follows, and the waiting list takes over when the room is full.",
+      number: "10",
+      icon: <KeyRound className="size-5" />,
+      title: "Frictionless Onboarding",
+      copy: "Expiring email passcodes, guest access and browsing before sign-up — no password to invent, nothing to remember.",
       points: [
-        "Deadlines and capacity enforced on the server, never in the browser",
-        "Waiting list with automatic promotion when a place is released",
-        "Your own bookings, references and releases live on one page",
+        "A six-digit code that lives for fifteen minutes, and the catalogue is readable without it",
+      ],
+      to: "/auth",
+      cta: "Sign in with a code",
+    },
+    {
+      number: "11",
+      icon: <MessagesSquare className="size-5" />,
+      title: "Interactive Community Ecosystem",
+      copy: "Verified attendee reviews, computed rating averages, file-supported comment threads and one inbox for every message.",
+      points: [
+        "Only people who held a place can review it, and averages are counted, never stored",
+      ],
+      to: "/events",
+      cta: "Read the reviews",
+    },
+    {
+      number: "12",
+      icon: <ShieldCheck className="size-5" />,
+      title: "Ironclad Moderation & Security",
+      copy: "Moderation queues, appointed moderator permissions and strict data privacy controls.",
+      points: [
+        "Every action is checked again on the server, and the owner's console decides who may moderate",
+      ],
+      to: "/control",
+      cta: "See the moderator tools",
+    },
+    {
+      number: "13",
+      icon: <Languages className="size-5" />,
+      title: "Global Localization Engine",
+      copy: "A five-language interface with explicit preference persistence and locale selection.",
+      points: [
+        "Currency and language are chosen once in the header and remembered across the visit",
+      ],
+      to: "/events",
+      cta: "Change the language",
+    },
+    {
+      number: "14",
+      icon: <Bot className="size-5" />,
+      title: "24/7 AI Assistant",
+      copy: "Memo is built for this catalogue: ask about dates, venues, places left or the shop in plain sentences and get an answer grounded in the live records.",
+      points: [
+        "Answers on any page, from the corner dock, with the source of each answer named",
+      ],
+      to: "/events",
+      cta: "Ask Memo something",
+    },
+    {
+      number: "15",
+      icon: <MousePointerClick className="size-5" />,
+      title: "Micro-UX Craftsmanship",
+      copy: "Plain-language error reporting, an apologetic 404, clear focus rings and interfaces that react the moment something changes.",
+      points: [
+        "A failed action says what to do next in a sentence, in the reader's own words",
       ],
       to: "/dashboard",
-      cta: "See your bookings",
+      cta: "See the polish",
     },
     {
-      number: "03",
-      icon: <TrendingUp className="size-5" />,
-      title: "A console that shows the season",
-      copy: "Places taken against capacity, bookings day by day, who is on the guest list and what is waiting on a decision — counted from the bookings themselves, so no two screens can disagree.",
+      number: "16",
+      icon: <BadgeCheck className="size-5" />,
+      title: "100% Rulebook Compliance",
+      copy: "Organization → Fest → Event → Registration, built end to end and verified against every required specification: directory, search, filters, details, registration, confirmation and organizer management.",
       points: [
-        "Analytics per programme or across all of them",
-        "Search and filter the participant list by category and status",
-        "Confirm, waitlist or decline a place, and the participant is emailed",
+        "Seeded sample data on every deployment, so nothing has to be created to judge it",
       ],
-      to: "/admin",
-      cta: "Open the organizer console",
-    },
-    {
-      number: "04",
-      icon: <Megaphone className="size-5" />,
-      title: "News that reaches the guests",
-      copy: "A room change belongs on the event page and in the inbox of everyone holding a place. Post it once, email it once — the announcement remembers it went, so nobody is told the same news twice.",
-      points: [
-        "Announcements appear on the event page the moment you post",
-        "One press emails everyone confirmed or waiting",
-        "A cancellation policy you set, quoted before anyone books",
-      ],
-      to: "/admin",
-      cta: "See the announcement tools",
-    },
-    {
-      number: "05",
-      icon: <UserCheck className="size-5" />,
-      title: "A door roster that counts",
-      copy: "Mark a guest in as they arrive and the roster records the time and who marked them. Undo a mis-tap, and let the attendance rate stop being a guess.",
-      points: [
-        "Search the guest list by name, address or reference",
-        "Check in from the Participants tab, on a phone at the door",
-        "Attendance and late releases counted per event",
-      ],
-      to: "/admin",
-      cta: "Open the console",
+      to: "/programmes",
+      cta: "See the fest structure",
     },
   ];
 
@@ -739,16 +864,16 @@ function EssentialFeatures() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div className="max-w-2xl">
             <span className="label-eyebrow text-warm">
-              Why a club runs on this
+              What this platform is made of
             </span>
             <h2 className="font-display mt-5 text-[24px] leading-[1.18] font-light tracking-[-0.016em] text-balance sm:text-[30px]">
-              Five things, done properly. Everything else follows.
+              Sixteen capabilities, and not one of them a promise.
             </h2>
             <p className="mt-3 text-[14px] leading-7 text-muted-foreground">
-              No Google Forms, no spreadsheets, no chasing who paid or who
-              turned up. Browse a fest, take a place in a minute, and let the
-              console keep the record — from the first booking to the last guest
-              through the door.
+              From the booking engine and the ledgers to the roster at the door
+              and the assistant in the corner — every card below is something
+              you can open, press or break right now, on seeded data, without
+              creating a thing first.
             </p>
           </div>
           <Button
@@ -763,7 +888,7 @@ function EssentialFeatures() {
           </Button>
         </div>
 
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {cards.map((card) => (
             <motion.article
               key={card.number}
@@ -2550,8 +2675,8 @@ export default function Landing() {
         {/* The report, at the foot of the page */}
         <ReportBand />
 
-        {/* The five things that decide whether a club platform is any good. */}
-        <EssentialFeatures />
+        {/* What the platform is made of, in sixteen parts. */}
+        <PlatformCapabilities />
       </main>
 
       <SiteFooter />
