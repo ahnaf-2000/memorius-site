@@ -1,1 +1,0 @@
-import{u as o,d as r,s as a}from"./index-B-nlqMWb.js";import{r as u}from"./framer-motion-DC0yHm-A.js";function f(){const e=o(r.fests.list),s=a(r.seed.ensureSeeded),t=u.useRef(!1);u.useEffect(()=>{e!==void 0&&(e.length>0||t.current||(t.current=!0,s().catch(n=>{console.warn("[Cadence] Could not seed the showcase catalogue:",n)})))},[e,s])}export{f as u};
