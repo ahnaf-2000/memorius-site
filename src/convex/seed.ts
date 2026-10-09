@@ -6,7 +6,37 @@ import { mutation } from "./_generated/server";
  * behind by an earlier version — and only showcase data, never a programme a
  * business created itself.
  */
-const SHOWCASE_VERSION = 7;
+const SHOWCASE_VERSION = 8;
+
+/**
+ * The demo guest list, used to seed real bookings on the nearest events.
+ *
+ * Twelve people with mixed statuses and guest list categories, spread over the
+ * last ten days so the booking trend in the analytics has a shape. Every
+ * address is on a domain reserved for documentation.
+ */
+const DEMO_GUESTS: {
+  name: string;
+  email: string;
+  organization: string;
+  category: "delegate" | "student" | "speaker" | "press" | "volunteer" | "guest" | "staff";
+  status: "confirmed" | "waitlisted" | "declined" | "cancelled";
+  daysAgo: number;
+  note?: string;
+}[] = [
+  { name: "Ayesha Rahman", email: "ayesha.rahman@example.com", organization: "Arden Logistics", category: "delegate", status: "confirmed", daysAgo: 1 },
+  { name: "Tom Whitfield", email: "tom.whitfield@example.com", organization: "Northwind Retail", category: "delegate", status: "confirmed", daysAgo: 2, note: "Vegetarian lunch." },
+  { name: "Priya Raman", email: "priya.raman@example.com", organization: "Corso Analytics", category: "speaker", status: "confirmed", daysAgo: 3, note: "Speaking in session two." },
+  { name: "Halima Yusuf", email: "halima.yusuf@example.com", organization: "Meridian Group", category: "staff", status: "confirmed", daysAgo: 4 },
+  { name: "Daniel Okafor", email: "daniel.okafor@example.com", organization: "Freight Standards Board", category: "press", status: "waitlisted", daysAgo: 2 },
+  { name: "Mei Lin", email: "mei.lin@example.com", organization: "Harbour Line", category: "delegate", status: "confirmed", daysAgo: 5 },
+  { name: "Sofia Marchetti", email: "sofia.marchetti@example.com", organization: "Studio Nine", category: "student", status: "confirmed", daysAgo: 6 },
+  { name: "Jonas Berg", email: "jonas.berg@example.com", organization: "Baltic Freight", category: "delegate", status: "confirmed", daysAgo: 7 },
+  { name: "Amara Nwosu", email: "amara.nwosu@example.com", organization: "Lagos Tech Hub", category: "volunteer", status: "confirmed", daysAgo: 8, note: "Happy to help at the registration desk." },
+  { name: "Elena Moretti", email: "elena.moretti@example.com", organization: "Corso Analytics", category: "guest", status: "declined", daysAgo: 9, note: "Invited by a panel member; no places left." },
+  { name: "Rafiq Islam", email: "rafiq.islam@example.com", organization: "Delta Shipping", category: "delegate", status: "cancelled", daysAgo: 10, note: "Released a place on the waiting list." },
+  { name: "Grace Bennett", email: "grace.bennett@example.com", organization: "Finsbury Press", category: "press", status: "declined", daysAgo: 6 },
+];
 
 /** What is on sale at every seeded event: merchandise to keep, snacks for the day. */
 const SHOP_STOCK = [
@@ -705,6 +735,50 @@ export const ensureSeeded = mutation({
           createdAt: now - sponsor.daysAgo * 86_400_000,
         });
       }
+    }
+
+    // A real guest list on the four nearest events.
+    //
+    // A console with nobody in it cannot be judged: the participants directory,
+    // the filters, the decisions, the analytics and the door roster would all be
+    // empty on first look. These people are written as ordinary bookings — their
+    // own account rows, mixed statuses and guest list categories — and the
+    // events they hold places on have their seats count corrected to match, so
+    // the availability shown is the availability the rows support. The addresses
+    // are reserved for documentation, so nothing here can mail a stranger.
+    for (const [index, guest] of DEMO_GUESTS.entries()) {
+      const event = seededEvents[index % 4];
+      if (event === undefined) continue;
+      const userId = await ctx.db.insert("users", {
+        name: guest.name,
+        email: guest.email,
+        isAnonymous: true,
+      });
+      await ctx.db.insert("registrations", {
+        eventId: event.eventId,
+        festId: event.festId,
+        userId,
+        fullName: guest.name,
+        email: guest.email,
+        organization: guest.organization,
+        notes: guest.note,
+        participantCategory: guest.category,
+        status: guest.status,
+        paymentStatus: "waived",
+        amountPaid: 0,
+        discount: 0,
+        reference: `MEM-D${String(index + 1).padStart(2, "0")}`,
+        createdAt: now - guest.daysAgo * 86_400_000,
+      });
+    }
+    for (const event of seededEvents.slice(0, 4)) {
+      const rows = await ctx.db
+        .query("registrations")
+        .withIndex("by_event", (q) => q.eq("eventId", event.eventId))
+        .collect();
+      await ctx.db.patch(event.eventId, {
+        seatsTaken: rows.filter((row) => row.status === "confirmed").length,
+      });
     }
 
     // Merchandise and snacks go on sale at every seeded event, so the shop has
