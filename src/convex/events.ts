@@ -278,6 +278,67 @@ export const update = mutation({
   },
 });
 
+/**
+ * Post an announcement on an event that is already published.
+ *
+ * This is the one detail that keeps moving after publication — a room change,
+ * a start time, a guest who can no longer come — so it is the one detail the
+ * organizer can add to without rewriting anything already promised. The event
+ * page shows it at once, and it travels with every confirmation sent after it
+ * is posted.
+ */
+export const announce = mutation({
+  args: { id: v.id("events"), title: v.string(), body: v.string() },
+  handler: async (ctx, { id, title, body }) => {
+    const userId = await requireUserId(ctx);
+    const event = await ctx.db.get(id);
+    if (event === null) throw new Error("That event no longer exists.");
+    const fest = await ctx.db.get(event.festId);
+    if (fest === null || fest.ownerId !== userId) {
+      throw new Error("Only the owning account can post an announcement.");
+    }
+
+    const cleanTitle = title.trim().slice(0, 120);
+    const cleanBody = body.trim().slice(0, 1200);
+    if (cleanTitle.length < 3) {
+      throw new Error("Give the announcement a short heading.");
+    }
+    if (cleanBody.length < 8) {
+      throw new Error("Add a sentence about what has changed.");
+    }
+
+    // The newest twenty are kept, so a long-running event cannot grow a
+    // document that will not fit in one read.
+    const announcements = [
+      ...(event.announcements ?? []),
+      { title: cleanTitle, body: cleanBody, at: Date.now() },
+    ].slice(-20);
+
+    await ctx.db.patch(id, { announcements });
+    return { posted: announcements.length };
+  },
+});
+
+/** Take one back down — it was posted in error, or it no longer applies. */
+export const retract = mutation({
+  args: { id: v.id("events"), at: v.number() },
+  handler: async (ctx, { id, at }) => {
+    const userId = await requireUserId(ctx);
+    const event = await ctx.db.get(id);
+    if (event === null) throw new Error("That event no longer exists.");
+    const fest = await ctx.db.get(event.festId);
+    if (fest === null || fest.ownerId !== userId) {
+      throw new Error("Only the owning account can retract an announcement.");
+    }
+
+    const announcements = (event.announcements ?? []).filter(
+      (note) => note.at !== at,
+    );
+    await ctx.db.patch(id, { announcements });
+    return { remaining: announcements.length };
+  },
+});
+
 /** Remove an event, its bookings and its discussion. */
 export const remove = mutation({
   args: { id: v.id("events") },

@@ -71,10 +71,12 @@ import {
   Cog,
   Loader2,
   LogOut,
+  Megaphone,
   Plus,
   Trash2,
   TriangleAlert,
   Users,
+  X,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
@@ -685,6 +687,169 @@ function GuestsDialog({
   );
 }
 
+/* ---------------------------------------------------------- announcements */
+
+/**
+ * The one thing that keeps changing after an event is published.
+ *
+ * Whatever the organizer writes here lands on the event page immediately and
+ * travels in the confirmation email of everyone who books afterwards, so the
+ * form says exactly that rather than promising an email that is not sent.
+ */
+function AnnounceDialog({ event }: { event: ConsoleEvent }) {
+  const post = useMutation(api.events.announce);
+  const retract = useMutation(api.events.retract);
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const notes = [...event.announcements].sort((a, b) => b.at - a.at);
+
+  function reset() {
+    setTitle("");
+    setBody("");
+    setError(null);
+  }
+
+  async function submit(submitEvent: React.FormEvent<HTMLFormElement>) {
+    submitEvent.preventDefault();
+    if (pending) return;
+    setPending(true);
+    setError(null);
+    try {
+      await post({ id: event._id, title, body });
+      toast.success("Announcement posted", {
+        description: "It is on the event page now.",
+      });
+      reset();
+    } catch (postError) {
+      setError(errorMessage(postError));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) reset();
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 gap-1.5 rounded-full px-3 text-[12px]"
+        >
+          <Megaphone className="size-3.5" />
+          Announce
+          {notes.length > 0 && (
+            <span className="text-muted-foreground tabular-nums">
+              ({notes.length})
+            </span>
+          )}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-[18px] tracking-[-0.02em]">
+            Announcements
+          </DialogTitle>
+          <DialogDescription>{event.title}</DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[34vh] overflow-y-auto">
+          {notes.length === 0 ? (
+            <p className="rounded-md border border-dashed border-border px-4 py-6 text-[13px] leading-6 text-muted-foreground">
+              Nothing announced yet. A room move, a time change or a guest who
+              cannot come belongs here.
+            </p>
+          ) : (
+            <ul className="border-t border-border">
+              {notes.map((note) => (
+                <li
+                  key={note.at}
+                  className="flex items-start justify-between gap-4 border-b border-border py-3.5"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-medium tracking-[-0.012em]">
+                      {note.title}
+                    </p>
+                    <p className="mt-1 text-[12.5px] leading-5 text-muted-foreground">
+                      {note.body}
+                    </p>
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">
+                      {relativeDay(note.at)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={`Retract ${note.title}`}
+                    onClick={async () => {
+                      try {
+                        await retract({ id: event._id, at: note.at });
+                        toast.success("Announcement retracted");
+                      } catch (retractError) {
+                        toast.error(errorMessage(retractError));
+                      }
+                    }}
+                    className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:text-destructive"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <form onSubmit={submit} className="space-y-3 border-t border-border pt-5">
+          <FormField id="announce-title" label="Heading">
+            <Input
+              id="announce-title"
+              required
+              value={title}
+              onChange={(changeEvent) => setTitle(changeEvent.target.value)}
+              placeholder="Room moved to Studio 2"
+              className={inputClass}
+            />
+          </FormField>
+          <FormField id="announce-body" label="What changed">
+            <Textarea
+              id="announce-body"
+              rows={3}
+              required
+              value={body}
+              onChange={(changeEvent) => setBody(changeEvent.target.value)}
+              placeholder="Same time, same building — take the lift to the second floor."
+              className="bg-background shadow-none"
+            />
+          </FormField>
+          {error !== null && (
+            <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[12px] text-destructive">
+              {error}
+            </p>
+          )}
+          <DialogFooter className="gap-3 sm:items-center sm:justify-between">
+            <span className="text-[11px] leading-5 text-muted-foreground">
+              It appears on the event page at once, and in the confirmation
+              email of everyone who books after it is posted.
+            </span>
+            <Button type="submit" disabled={pending} className="rounded-full">
+              {pending && <Loader2 className="size-4 animate-spin" />}
+              Post announcement
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ------------------------------------------------------------- destructive */
 
 function DeleteProgrammeButton({
@@ -807,6 +972,7 @@ type ConsoleEvent = {
   waitlisted: number;
   collected: number;
   outstanding: number;
+  announcements: { title: string; body: string; at: number }[];
 };
 
 function ConsoleEventRow({ event }: { event: ConsoleEvent }) {
@@ -835,6 +1001,7 @@ function ConsoleEventRow({ event }: { event: ConsoleEvent }) {
           </p>
         </div>
         <div className="flex items-center gap-1.5">
+          <AnnounceDialog event={event} />
           <GuestsDialog eventId={event._id} title={event.title} />
           <DeleteEventButton eventId={event._id} title={event.title} />
         </div>
