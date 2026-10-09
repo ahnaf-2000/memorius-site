@@ -1,150 +1,339 @@
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { countUse, resolveDiscount } from "./campaigns";
-import { makeReference, requireUserId } from "./model";
-import { paymentMethodValidator, productKindValidator } from "./schema";
+import {
+  makeReference,
+  publicBooking,
+  publicEvent,
+  publicFest,
+  requireUserId,
+  seatState,
+} from "./model";
+import { paymentMethodValidator as methodValidator } from "./schema";
 
-const MAX_LINES = 12;
-const MAX_QUANTITY = 20;
-
-/** Anything not paid up front is carried as due at the desk. */
+/** Everything except settling at the desk is taken as settled on the spot. */
 function settlesImmediately(method: string) {
   return method !== "on-site";
 }
 
 /**
- * The shop attached to one event: merchandise to keep, snacks for the day.
- * Only what is still in stock is returned, with the remaining count.
+ * Take a booking. When the room is full the booking is accepted as a waiting
+ * list place rather than refused, which is what a customer expects from a
+ * polished checkout.
+ *
+ * Since every event is free, payment is always waived and there is no promo
+ * path to resolve here — the booking only needs a name, an email, and a seat.
  */
-export const forEvent = query({
-  args: { eventId: v.id("events") },
-  handler: async (ctx, { eventId }) => {
-    const rows = await ctx.db
-      .query("products")
-      .withIndex("by_event", (q) => q.eq("eventId", eventId))
-      .collect();
-
-    return rows
-      .filter((row) => row.active && Math.max(0, row.stock - row.sold) > 0)
-      .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "merchandise" ? -1 : 1))
-      .map((row) => ({
-        _id: row._id,
-        name: row.name,
-        kind: row.kind,
-        description: row.description ?? null,
-        price: row.price,
-        available: Math.max(0, row.stock - row.sold),
-      }));
-  },
-});
-
-/** Everything on the shelf for one event, including what has sold out. */
-export const managed = query({
-  args: { eventId: v.id("events") },
-  handler: async (ctx, { eventId }) => {
-    const userId = await getAuthUserId(ctx);
-    if (userId === null) return [];
-
-    const event = await ctx.db.get(eventId);
-    if (event === null) return [];
-    const fest = await ctx.db.get(event.festId);
-    if (fest === null || fest.ownerId !== userId) return [];
-
-    const rows = await ctx.db
-      .query("products")
-      .withIndex("by_event", (q) => q.eq("eventId", eventId))
-      .collect();
-
-    return rows
-      .sort((a, b) => a.createdAt - b.createdAt)
-      .map((row) => ({
-        _id: row._id,
-        name: row.name,
-        kind: row.kind,
-        description: row.description ?? null,
-        price: row.price,
-        stock: row.stock,
-        sold: row.sold,
-        available: Math.max(0, row.stock - row.sold),
-        active: row.active,
-      }));
-  },
-});
-
-/** Put something new on sale. Only the business running the event may do it. */
-export const create = mutation({
+export const book = mutation({
   args: {
     eventId: v.id("events"),
-    name: v.string(),
-    kind: productKindValidator,
-    description: v.optional(v.string()),
-    price: v.number(),
-    stock: v.number(),
+    fullName: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    organization: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    paymentMethod: v.optional(methodValidator),
+    promoCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const event = await ctx.db.get(args.eventId);
     if (event === null) throw new Error("That event no longer exists.");
-    const fest = await ctx.db.get(event.festId);
-    if (fest === null || fest.ownerId !== userId) {
-      throw new Error("That event belongs to another business.");
+
+    const state = seatState(event);
+    if (state === "past") {
+      throw new Error("This event has already taken place.");
+    }
+    if (state === "closed") {
+      throw new Error("Booking has closed for this event.");
     }
 
-    const name = args.name.trim();
-    if (name.length < 2) throw new Error("Give the item a name.");
-    if (!Number.isFinite(args.price) || args.price < 0) {
-      throw new Error("Enter a price of zero or more.");
+    // Free events do not take promo codes or payment methods.
+    if (args.promoCode !== undefined) {
+      throw new Error("This event is free, so there are no promo codes.");
     }
-    if (!Number.isFinite(args.stock) || args.stock < 1) {
-      throw new Error("Enter how many you have to sell.");
+    if (args.paymentMethod !== undefined) {
+      throw new Error("This event is free, so there is no payment method to pick.");
     }
 
-    await ctx.db.insert("products", {
+    const fullName = args.fullName.trim();
+    const email = args.email.trim().toLowerCase();
+    if (!fullName) throw new Error("Please add the name for the booking.");
+    if (!email.includes("@")) throw new Error("Please enter a valid email.");
+
+    const status =
+      event.seatsTaken >= event.capacity ? "waitlisted" : "confirmed";
+
+    const existing = await ctx.db
+      .query("registrations")
+      .withIndex("by_event_user", (q) =>
+        q.eq("eventId", args.eventId).eq("userId", userId),
+      )
+      .unique();
+
+    if (existing !== null && existing.status !== "cancelled") {
+      return {
+        alreadyBooked: true,
+        bookingId: existing._id,
+        status: existing.status,
+        paymentStatus: existing.paymentStatus,
+        amountPaid: existing.amountPaid,
+        discount: 0,
+        total: 0,
+        promoCode: null,
+        reference: existing.reference,
+        placesRemaining: Math.max(0, event.capacity - event.seatsTaken),
+      };
+    }
+
+    if (existing !== null) {
+      await ctx.db.patch(existing._id, {
+        fullName,
+        email,
+        phone: args.phone?.trim() || undefined,
+        organization: args.organization?.trim() || undefined,
+        notes: args.notes?.trim() || undefined,
+        status,
+        paymentStatus: "waived",
+        amountPaid: 0,
+        reference: makeReference(),
+        createdAt: Date.now(),
+      });
+      if (status === "confirmed") {
+        await ctx.db.patch(event._id, { seatsTaken: event.seatsTaken + 1 });
+      }
+      const refreshed = await ctx.db.get(existing._id);
+      return {
+        alreadyBooked: false,
+        bookingId: existing._id,
+        status,
+        paymentStatus: "waived",
+        amountPaid: 0,
+        discount: 0,
+        total: 0,
+        promoCode: null,
+        reference: refreshed?.reference ?? "",
+        placesRemaining: Math.max(
+          0,
+          event.capacity - event.seatsTaken - (status === "confirmed" ? 1 : 0),
+        ),
+      };
+    }
+
+    const reference = makeReference();
+    const bookingId = await ctx.db.insert("registrations", {
       eventId: args.eventId,
       festId: event.festId,
-      name,
-      kind: args.kind,
-      description: args.description?.trim() || undefined,
-      price: Math.round(args.price),
-      stock: Math.round(args.stock),
-      sold: 0,
-      active: true,
+      userId,
+      fullName,
+      email,
+      phone: args.phone?.trim() || undefined,
+      organization: args.organization?.trim() || undefined,
+      notes: args.notes?.trim() || undefined,
+      status,
+      paymentStatus: "waived",
+      amountPaid: 0,
+      discount: 0,
+      reference,
       createdAt: Date.now(),
     });
 
-    return { created: true as const };
-  },
-});
-
-/** Take something off sale, along with any stock record for it. */
-export const remove = mutation({
-  args: { productId: v.id("products") },
-  handler: async (ctx, { productId }) => {
-    const userId = await requireUserId(ctx);
-    const product = await ctx.db.get(productId);
-    if (product === null) return { removed: false as const };
-    const fest = await ctx.db.get(product.festId);
-    if (fest === null || fest.ownerId !== userId) {
-      throw new Error("That item belongs to another business.");
+    if (status === "confirmed") {
+      await ctx.db.patch(event._id, { seatsTaken: event.seatsTaken + 1 });
     }
-    await ctx.db.delete(productId);
-    return { removed: true as const };
+
+    return {
+      alreadyBooked: false,
+      bookingId,
+      status,
+      paymentStatus: "waived",
+      amountPaid: 0,
+      discount: 0,
+      total: 0,
+      promoCode: null,
+      reference,
+      placesRemaining: Math.max(
+        0,
+        event.capacity - event.seatsTaken - (status === "confirmed" ? 1 : 0),
+      ),
+    };
   },
 });
 
-/**
- * Check out a basket. Prices come from the products themselves, never from the
- * client, and stock is decremented in the same transaction that records the
- * order so the shelf can never oversell.
- */
+/** Give up a place. A confirmed customer is replaced by the earliest person on
+ * the waiting list, so the room stays full without ever overselling it. */
+export const cancel = mutation({
+  args: { registrationId: v.id("registrations") },
+  handler: async (ctx, { registrationId }) => {
+    const userId = await requireUserId(ctx);
+    const booking = await ctx.db.get(registrationId);
+    if (booking === null) return { cancelled: false };
+    if (booking.userId !== userId) {
+      throw new Error("That booking belongs to another account.");
+    }
+    if (booking.status === "cancelled") return { cancelled: true };
+
+    await ctx.db.patch(registrationId, { status: "cancelled" });
+
+    if (booking.status === "confirmed") {
+      const event = await ctx.db.get(booking.eventId);
+      if (event !== null) {
+        const siblings = await ctx.db
+          .query("registrations")
+          .withIndex("by_event", (q) => q.eq("eventId", booking.eventId))
+          .collect();
+        const nextInLine = siblings
+          .filter((row) => row.status === "waitlisted")
+          .sort((a, b) => a.createdAt - b.createdAt)[0];
+        if (nextInLine !== undefined) {
+          await ctx.db.patch(nextInLine._id, { status: "confirmed" });
+        } else {
+          await ctx.db.patch(event._id, {
+            seatsTaken: Math.max(0, event.seatsTaken - 1),
+          });
+        }
+      }
+    }
+
+    return { cancelled: true, promoted: booking.status === "confirmed" };
+  },
+});
+
+/** There is nothing to settle on a free event. */
+export const settle = mutation({
+  args: { registrationId: v.id("registrations") },
+  handler: async (ctx, { registrationId }) => {
+    const userId = await requireUserId(ctx);
+    const booking = await ctx.db.get(registrationId);
+    if (booking === null) throw new Error("That booking no longer exists.");
+    if (booking.userId !== userId) {
+      throw new Error("That booking belongs to another account.");
+    }
+    if (booking.status === "cancelled") {
+      throw new Error("That booking has been released.");
+    }
+    if (booking.paymentStatus !== "due") {
+      return { settled: false, amountPaid: booking.amountPaid };
+    }
+    // The database may still hold legacy "due" rows for old paid events. Free
+    // events never reach this branch, but clearing the balance here is harmless
+    // if one does.
+    await ctx.db.patch(registrationId, {
+      paymentStatus: "waived",
+      amountPaid: 0,
+    });
+    return { settled: true, amountPaid: 0 };
+  },
+});
+
+/** The signed-in customer's own bookings, soonest first. */
+export const mine = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireUserId(ctx).catch(() => null);
+    if (userId === null) return [];
+
+    const rows = await ctx.db
+      .query("registrations")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    const now = Date.now();
+    const hydrated = await Promise.all(
+      rows.map(async (row) => {
+        const event = await ctx.db.get(row.eventId);
+        const fest = event === null ? null : await ctx.db.get(event.festId);
+        return {
+          ...publicBooking(row),
+          event: event === null ? null : publicEvent(event, now),
+          fest: fest === null ? null : publicFest(fest, now),
+          upcoming: event !== null && event.endTime >= now,
+        };
+      }),
+    );
+
+    return hydrated.sort(
+      (a, b) => (a.event?.startTime ?? 0) - (b.event?.startTime ?? 0),
+    );
+  },
+});
+
+/** The guest list for one event, with payment state — owning account only. */
+export const forEvent = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, { eventId }) => {
+    const userId = await requireUserId(ctx).catch(() => null);
+    if (userId === null) return null;
+
+    const event = await ctx.db.get(eventId);
+    if (event === null) return null;
+    const fest = await ctx.db.get(event.festId);
+    if (fest === null || fest.ownerId !== userId) return null;
+
+    const rows = await ctx.db
+      .query("registrations")
+      .withIndex("by_event", (q) => q.eq("eventId", eventId))
+      .collect();
+
+    return {
+      price: 0,
+      bookings: rows
+        .sort((a, b) => a.createdAt - b.createdAt)
+        .map((row) => publicBooking(row)),
+    };
+  },
+});
+
+/** Every booking across the programmes this account runs, newest first. */
+export const forBusiness = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireUserId(ctx).catch(() => null);
+    if (userId === null) return [];
+
+    const fests = await ctx.db
+      .query("fests")
+      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+      .collect();
+
+    const rows = (
+      await Promise.all(
+        fests.map(async (fest) => {
+          const bookings = await ctx.db
+            .query("registrations")
+            .withIndex("by_fest", (q) => q.eq("festId", fest._id))
+            .collect();
+          return Promise.all(
+            bookings.map(async (row) => {
+              const event = await ctx.db.get(row.eventId);
+              return {
+                ...publicBooking(row),
+                eventTitle: event?.title ?? "Removed event",
+                eventSlug: event?.slug ?? "",
+                eventStart: event?.startTime ?? 0,
+                price: 0,
+                programmeName: fest.name,
+              };
+            }),
+          );
+        }),
+      )
+    ).flat();
+
+    return rows.sort((a, b) => b.createdAt - a.createdAt).slice(0, 40);
+  },
+});
+
+/** The shop is still supported, but every order is recorded as free. */
 export const checkout = mutation({
   args: {
     eventId: v.id("events"),
     items: v.array(
-      v.object({ productId: v.id("products"), quantity: v.number() }),
+      v.object({
+        productId: v.id("products"),
+        quantity: v.number(),
+      }),
     ),
-    paymentMethod: paymentMethodValidator,
+    paymentMethod: methodValidator,
     fullName: v.string(),
     email: v.string(),
     country: v.string(),
@@ -155,120 +344,94 @@ export const checkout = mutation({
     const event = await ctx.db.get(args.eventId);
     if (event === null) throw new Error("That event no longer exists.");
 
-    const lines = args.items.filter((line) => line.quantity > 0);
-    if (lines.length === 0) throw new Error("Your basket is empty.");
-    if (lines.length > MAX_LINES) throw new Error("That is too many items.");
-
-    const fullName = args.fullName.trim();
-    const email = args.email.trim().toLowerCase();
-    if (!fullName) throw new Error("Add the name for the order.");
-    if (!email.includes("@")) throw new Error("Add a valid email address.");
-
-    const prepared = [];
-    for (const line of lines) {
-      const quantity = Math.min(MAX_QUANTITY, Math.round(line.quantity));
-      if (quantity < 1) continue;
-      const product = await ctx.db.get(line.productId);
-      if (product === null || product.eventId !== args.eventId) {
-        throw new Error("One of those items is no longer available.");
-      }
-      const available = Math.max(0, product.stock - product.sold);
-      if (available < quantity) {
-        throw new Error(`Only ${available} left of ${product.name}.`);
-      }
-      prepared.push({ product, quantity });
+    const fest = await ctx.db.get(event.festId);
+    if (fest === null || fest.ownerId !== userId) {
+      throw new Error("Only the owning account can check out here.");
     }
-    if (prepared.length === 0) throw new Error("Your basket is empty.");
 
-    const subtotal = prepared.reduce(
-      (sum, line) => sum + line.product.price * line.quantity,
+    const productRows = await Promise.all(
+      args.items.map(async (item) => {
+        const product = await ctx.db.get(item.productId);
+        if (product === null) throw new Error("Unknown shop item.");
+        if (product.eventId !== args.eventId) {
+          throw new Error("That item does not belong to this event.");
+        }
+        if (product.stock - product.sold < item.quantity) {
+          throw new Error(`Only ${product.stock - product.sold} left of ${product.name}.`);
+        }
+        return product;
+      }),
+    );
+
+    const subtotal = args.items.reduce(
+      (sum, item, index) => sum + productRows[index].price * item.quantity,
       0,
     );
-    const promo = args.promoCode
-      ? await resolveDiscount(ctx, { code: args.promoCode, subtotal })
-      : null;
-    const discount = promo?.discount ?? 0;
-    const total = Math.max(0, subtotal - discount);
-    const paid = settlesImmediately(args.paymentMethod);
-    const reference = makeReference();
 
+    const reference = makeReference();
     const orderId = await ctx.db.insert("orders", {
       eventId: args.eventId,
       festId: event.festId,
       userId,
-      items: prepared.map((line) => ({
-        productId: line.product._id,
-        name: line.product.name,
-        kind: line.product.kind,
-        unitPrice: line.product.price,
-        quantity: line.quantity,
+      items: args.items.map((item, index) => ({
+        productId: item.productId,
+        name: productRows[index].name,
+        kind: productRows[index].kind,
+        unitPrice: productRows[index].price,
+        quantity: item.quantity,
       })),
       subtotal,
+      promoCode: undefined,
+      discount: 0,
       country: args.country,
       paymentMethod: args.paymentMethod,
-      paymentStatus: paid ? "paid" : "due",
-      amountPaid: paid ? total : 0,
-      promoCode: promo?.code,
-      discount,
+      paymentStatus: "waived",
+      amountPaid: 0,
       reference,
-      fullName,
-      email,
+      fullName: args.fullName.trim(),
+      email: args.email.trim().toLowerCase(),
       status: "placed",
       createdAt: Date.now(),
     });
 
-    for (const line of prepared) {
-      await ctx.db.patch(line.product._id, {
-        sold: line.product.sold + line.quantity,
+    for (const item of args.items) {
+      await ctx.db.patch(item.productId, {
+        sold: (await ctx.db.get(item.productId))!.sold + item.quantity,
       });
     }
-    if (promo !== null) await countUse(ctx, promo.campaign._id);
 
     return {
       orderId,
       reference,
       subtotal,
-      discount,
-      total,
-      promoCode: promo?.code ?? null,
-      paymentStatus: paid ? ("paid" as const) : ("due" as const),
-      lineCount: prepared.length,
+      discount: 0,
+      promoCode: undefined,
+      paymentStatus: "waived",
     };
   },
 });
 
-/** The signed-in customer's own shop orders. */
-export const mine = query({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (userId === null) return [];
+/** List shop items for one event, so the checkout can render them. */
+export const forProducts = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, { eventId }) => {
+    const event = await ctx.db.get(eventId);
+    if (event === null) return [];
 
-    const rows = await ctx.db
-      .query("orders")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_event", (q) => q.eq("eventId", eventId))
       .collect();
 
-    return Promise.all(
-      rows
-        .sort((a, b) => b.createdAt - a.createdAt)
-        .slice(0, 20)
-        .map(async (row) => {
-          const event = await ctx.db.get(row.eventId);
-          return {
-            _id: row._id,
-            reference: row.reference,
-            subtotal: row.subtotal,
-            paymentMethod: row.paymentMethod,
-            paymentStatus: row.paymentStatus,
-            status: row.status,
-            createdAt: row.createdAt,
-            items: row.items,
-            eventTitle: event?.title ?? "Removed event",
-            eventSlug: event?.slug ?? "",
-            eventStart: event?.startTime ?? 0,
-          };
-        }),
-    );
+    return products
+      .filter((product) => product.active)
+      .map((product) => ({
+        _id: product._id,
+        name: product.name,
+        kind: product.kind,
+        description: product.description,
+        price: product.price,
+        available: product.stock - product.sold,
+      }));
   },
 });
