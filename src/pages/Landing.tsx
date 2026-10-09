@@ -1,7 +1,6 @@
 import { MEMO_OPEN_EVENT } from "@/components/site/AssistantDock";
 import { EventDirectory } from "@/components/site/EventDirectory";
 import { EventSlideshow } from "@/components/site/EventSlideshow";
-import { FeatureGrid } from "@/components/site/FeatureGrid";
 import { PAYMENT_OPTIONS } from "@/components/site/PaymentMethods";
 import { StatusDot } from "@/components/site/EventList";
 import { ProgrammeCard } from "@/components/site/FestCard";
@@ -649,21 +648,74 @@ function NextEventCard({ events }: { events: EventListItem[] }) {
 }
 
 /**
- * The two reasons an organizer asks for first.
+ * The five things this platform has to get right.
  *
- * The wall below lists 102 things the product does, and every square is a
- * promise. These two are the newest and the ones the people running the day
- * asked for most, so they get more than one inch: the wall's 101st and 102nd
- * squares, explained where they can be read.
+ * A club does not need a hundred features; it needs a directory people can
+ * search, a registration that takes a minute, a console that shows who is
+ * coming, a way to tell everyone when a room changes, and a roster that
+ * records who actually turned up. Everything else on the site exists to
+ * support those five.
  */
-function OrganizerSpotlight() {
+function EssentialFeatures() {
   const reduced = useReducedMotion();
   const cards = [
     {
-      number: "101",
+      number: "01",
+      icon: <CalendarCheck className="size-5" />,
+      title: "Every fest, and every event inside it",
+      copy: "One directory of programmes — Tech Carnival, Winter Fest, Freshers Week — each opening onto its own line-up with dates, venues, places left and the guest list they carry.",
+      points: [
+        "Search the whole catalogue, or filter by category and eligibility",
+        "Event cards carry the date, venue, capacity and availability",
+        "12 fests and their events are seeded, so nothing has to be created to look around",
+      ],
+      to: "/events",
+      cta: "Browse the catalogue",
+    },
+    {
+      number: "02",
+      icon: <Ticket className="size-5" />,
+      title: "A registration that takes a minute",
+      copy: "Pick a place, say who you are on the guest list, confirm. The reference is issued on the spot, the confirmation email with its printable invoice follows, and the waiting list takes over when the room is full.",
+      points: [
+        "Deadlines and capacity enforced on the server, never in the browser",
+        "Waiting list with automatic promotion when a place is released",
+        "Your own bookings, references and releases live on one page",
+      ],
+      to: "/dashboard",
+      cta: "See your bookings",
+    },
+    {
+      number: "03",
+      icon: <TrendingUp className="size-5" />,
+      title: "A console that shows the season",
+      copy: "Places taken against capacity, bookings day by day, who is on the guest list and what is waiting on a decision — counted from the bookings themselves, so no two screens can disagree.",
+      points: [
+        "Analytics per programme or across all of them",
+        "Search and filter the participant list by category and status",
+        "Confirm, waitlist or decline a place, and the participant is emailed",
+      ],
+      to: "/admin",
+      cta: "Open the organizer console",
+    },
+    {
+      number: "04",
+      icon: <Megaphone className="size-5" />,
+      title: "News that reaches the guests",
+      copy: "A room change belongs on the event page and in the inbox of everyone holding a place. Post it once, email it once — the announcement remembers it went, so nobody is told the same news twice.",
+      points: [
+        "Announcements appear on the event page the moment you post",
+        "One press emails everyone confirmed or waiting",
+        "A cancellation policy you set, quoted before anyone books",
+      ],
+      to: "/admin",
+      cta: "See the announcement tools",
+    },
+    {
+      number: "05",
       icon: <UserCheck className="size-5" />,
       title: "A door roster that counts",
-      copy: "Mark a guest in as they arrive and the roster records the time and who marked them. Check someone in twice by accident and the desk undoes it. The attendance rate on the analytics panel stops being a guess.",
+      copy: "Mark a guest in as they arrive and the roster records the time and who marked them. Undo a mis-tap, and let the attendance rate stop being a guess.",
       points: [
         "Search the guest list by name, address or reference",
         "Check in from the Participants tab, on a phone at the door",
@@ -671,19 +723,6 @@ function OrganizerSpotlight() {
       ],
       to: "/admin",
       cta: "Open the console",
-    },
-    {
-      number: "102",
-      icon: <Megaphone className="size-5" />,
-      title: "News that reaches the guests",
-      copy: "A room change belongs on the event page and in the inbox of everyone holding a place. Post it once, email it once — the announcement remembers it went, so nobody is told the same news twice.",
-      points: [
-        "Announcements appear on the event page the moment you post",
-        "One press emails everyone confirmed or waiting",
-        "The count of who was told is kept beside the announcement",
-      ],
-      to: "/admin",
-      cta: "See the announcement tools",
     },
   ];
 
@@ -700,15 +739,16 @@ function OrganizerSpotlight() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div className="max-w-2xl">
             <span className="label-eyebrow text-warm">
-              For the people running the day
+              Why a club runs on this
             </span>
             <h2 className="font-display mt-5 text-[24px] leading-[1.18] font-light tracking-[-0.016em] text-balance sm:text-[30px]">
-              The 101st and 102nd reasons are both about the desk.
+              Five things, done properly. Everything else follows.
             </h2>
             <p className="mt-3 text-[14px] leading-7 text-muted-foreground">
-              Everything on the wall below is real today. These two arrived
-              last, because an organizer asked for them: who actually turned up,
-              and how to tell everyone when something changes.
+              No Google Forms, no spreadsheets, no chasing who paid or who
+              turned up. Browse a fest, take a place in a minute, and let the
+              console keep the record — from the first booking to the last guest
+              through the door.
             </p>
           </div>
           <Button
@@ -723,7 +763,7 @@ function OrganizerSpotlight() {
           </Button>
         </div>
 
-        <div className="mt-12 grid gap-5 lg:grid-cols-2">
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {cards.map((card) => (
             <motion.article
               key={card.number}
@@ -2510,11 +2550,8 @@ export default function Landing() {
         {/* The report, at the foot of the page */}
         <ReportBand />
 
-        {/* The hundred and first and second reasons, told at length. */}
-        <OrganizerSpotlight />
-
-        {/* The hundred reasons: the last word before the footer. */}
-        <FeatureGrid />
+        {/* The five things that decide whether a club platform is any good. */}
+        <EssentialFeatures />
       </main>
 
       <SiteFooter />
