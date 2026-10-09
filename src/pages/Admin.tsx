@@ -1150,6 +1150,9 @@ export default function Admin() {
     | undefined;
   const events = useQuery(api.events.organized);
   const bookings = useQuery(api.registrations.forBusiness);
+  // The showcase programme, offered to anyone who has not joined it yet.
+  const demoState = useQuery(api.demo.state);
+  const claimDemo = useMutation(api.demo.claim);
   const [tab, setTab] = useState<AdminTab>("overview");
   // The shop hangs off one event at a time, so this tab keeps its own choice.
   const [shopEventId, setShopEventId] = useState<Id<"events"> | null>(null);
@@ -1220,6 +1223,47 @@ export default function Admin() {
               </Button>
             </div>
           </header>
+
+          {demoState?.ready === true && (
+            <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-dashed border-border bg-card px-5 py-4">
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-[13px] font-medium">
+                  <Users className="size-3.5" />
+                  Looking around? The showcase programme is already seeded.
+                </p>
+                <p className="mt-1.5 max-w-2xl text-[12.5px] leading-6 text-muted-foreground">
+                  Join {demoState.showcase} seeded programme
+                  {demoState.showcase === 1 ? "" : "s"} as a manager and the
+                  console fills with real data: participants to search and
+                  decide on, bookings to chart, and a roster to check people in
+                  at the door. You can leave it again at any time from
+                  Collaboration.
+                </p>
+              </div>
+              <Button
+                className="h-9 shrink-0 gap-1.5 rounded-full px-4 text-[13px]"
+                onClick={async () => {
+                  try {
+                    const result = await claimDemo({});
+                    toast.success(
+                      result.claimed > 0
+                        ? "You are on the showcase team"
+                        : "You were already on it",
+                      {
+                        description:
+                          "Its programmes now appear in the console above.",
+                      },
+                    );
+                  } catch (error) {
+                    toast.error(errorMessage(error));
+                  }
+                }}
+              >
+                <Users className="size-3.5" />
+                Explore the demo programme
+              </Button>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-8 border-b border-border py-10 lg:grid-cols-4">
             <StatBlock

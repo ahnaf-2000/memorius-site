@@ -8,10 +8,33 @@ monitor programmes; students browse, register and manage their own places.
 
 ## Demo credentials
 
-Registration and sign-in both use an email one-time code. To evaluate the
-platform quickly, sign in with your own address and you land as a participant
-with a dashboard of bookings. The organizer console is open to any signed-in
-account at /admin — the programmes you create there are yours.
+There is no shared password: sign-in is an email one-time code, sent to whatever
+address you enter, so **any address you control is a valid demo account**. Two
+clicks get you to every screen.
+
+**As a participant**
+
+1. Open `/auth`, enter your email, read the six-digit code from the inbox and
+   sign in. You land on `/dashboard`.
+2. Browse `/programmes` and `/events`, open any event and register — the
+   showcase catalogue (3 programmes, 10 events) is seeded on first load, so
+   nothing has to be created before you can book, wait-list or release a place.
+   The confirmation email carries the printable PDF invoice.
+
+**As an organizer**
+
+1. Sign in the same way and open `/admin`.
+2. If the console is empty, press **Explore the demo programme**. That gives your
+   account the seeded showcase programme as a manager, so every organizer screen
+   has real data in it: participants to search and filter, decisions that email
+   the participant, analytics with a booking trend and fill per event, the
+   announcement tools, collaboration, and the door roster.
+3. The demo guests use addresses on `example.com`, reserved for documentation,
+   so emails to them will not be delivered. Invite your own address, or book a
+   place yourself, to see mail arrive.
+
+**Moderator console**: `/control` is reserved for the owner address configured in
+`src/convex/access.ts`, so it is not part of the public demo.
 
 ## Features
 
