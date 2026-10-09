@@ -90,7 +90,8 @@ async function buildOverview(ctx: QueryCtx) {
       venue: event.venue,
       capacity: event.capacity,
       booked: event.seatsTaken,
-      price: event.price,
+      // Every event on the platform is free, so a place never has a price.
+      price: 0,
       fill:
         event.capacity === 0
           ? 0

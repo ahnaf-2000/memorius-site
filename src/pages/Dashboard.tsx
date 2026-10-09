@@ -162,11 +162,9 @@ function BookingCard({ booking }: { booking: BookingRow }) {
           </span>
           <span className="flex items-center gap-2 text-[11px] tracking-[0.08em] text-muted-foreground uppercase">
             <Dot className={paymentTone[booking.paymentStatus]} />
-            {booking.paymentStatus === "waived"
-              ? "No charge"
-              : booking.paymentStatus === "paid"
-                ? `${formatMoney(booking.amountPaid)} paid`
-                : `${formatMoney(event.price)} due`}
+            {booking.paymentStatus === "paid"
+              ? `${formatMoney(booking.amountPaid)} paid`
+              : "No charge"}
           </span>
           <span className="font-display text-[12px] tracking-[0.05em] text-muted-foreground">
             {booking.reference}
@@ -182,8 +180,8 @@ function BookingCard({ booking }: { booking: BookingRow }) {
             onClick={async () => {
               try {
                 await settle({ registrationId: booking._id });
-                toast.success("Balance settled", {
-                  description: `${formatMoney(event.price)} recorded against ${booking.reference}.`,
+                toast.success("Balance cleared", {
+                  description: `Places are free — nothing is owed on ${booking.reference}.`,
                 });
               } catch (error) {
                 toast.error(errorMessage(error));
@@ -191,7 +189,7 @@ function BookingCard({ booking }: { booking: BookingRow }) {
             }}
           >
             <CreditCard className="size-3.5" />
-            Pay {formatMoney(event.price)}
+            Clear the balance
           </Button>
         )}
         {!released && (
@@ -285,9 +283,6 @@ export default function Dashboard() {
   const settled = rows.filter(
     (row) => !row.upcoming || row.status === "cancelled",
   );
-  const balance = rows
-    .filter((row) => row.status !== "cancelled" && row.paymentStatus === "due")
-    .reduce((sum, row) => sum + (row.event?.price ?? 0), 0);
   const held = rows.filter((row) => row.status === "confirmed").length;
 
   return (
@@ -303,8 +298,8 @@ export default function Dashboard() {
                 Your bookings
               </h1>
               <p className="mt-4 max-w-xl text-[14px] leading-7 text-muted-foreground">
-                Everything you have booked, what is still to pay, and the
-                references you need at the door.
+                Everything you have booked, the references you need at the
+                door, and nothing to pay — every place on the platform is free.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -340,8 +335,8 @@ export default function Dashboard() {
               label="Ahead of you"
             />
             <StatBlock
-              value={bookings === undefined ? "—" : formatMoney(balance)}
-              label="Balance outstanding"
+              value={bookings === undefined ? "—" : String(settled.length)}
+              label="Finished or released"
             />
             <StatBlock
               value={bookings === undefined ? "—" : String(held)}

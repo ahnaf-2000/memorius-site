@@ -8,21 +8,14 @@ import {
   requireUserId,
   seatState,
 } from "./model";
-import { countUse, resolveDiscount } from "./campaigns";
-import { paymentMethodValidator as methodValidator } from "./schema";
-
-/** Everything except settling at the desk is taken as settled on the spot. */
-function settlesImmediately(method: string) {
-  return method !== "on-site";
-}
 
 /**
  * Take a booking. When the room is full the booking is accepted as a waiting
  * list place rather than refused, which is what a customer expects from a
  * polished checkout.
  *
- * Payment is recorded here too: a free event needs none, a card payment is
- * settled, and everything else is carried as due.
+ * Every event on the platform is free, so a place carries no price, no
+ * promotion and no method: it is recorded as waived with nothing to pay.
  */
 export const book = mutation({
   args: {
@@ -32,8 +25,6 @@ export const book = mutation({
     phone: v.optional(v.string()),
     organization: v.optional(v.string()),
     notes: v.optional(v.string()),
-    paymentMethod: v.optional(methodValidator),
-    promoCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
@@ -53,23 +44,6 @@ export const book = mutation({
     if (!fullName) throw new Error("Please add the name for the booking.");
     if (!email.includes("@")) throw new Error("Please enter a valid email.");
 
-    const price = event.price;
-    const method = price === 0 ? undefined : (args.paymentMethod ?? "bkash");
-    // A promotion is resolved on the server, from the code alone — the client
-    // never states what the discount is.
-    const promo =
-      price === 0 || !args.promoCode
-        ? null
-        : await resolveDiscount(ctx, { code: args.promoCode, subtotal: price });
-    const discount = promo?.discount ?? 0;
-    const total = Math.max(0, price - discount);
-    const paymentStatus =
-      price === 0
-        ? "waived"
-        : settlesImmediately(method ?? "bkash")
-          ? "paid"
-          : "due";
-    const amountPaid = paymentStatus === "paid" ? total : 0;
     const status =
       event.seatsTaken >= event.capacity ? "waitlisted" : "confirmed";
 
@@ -81,17 +55,15 @@ export const book = mutation({
       .unique();
 
     if (existing !== null && existing.status !== "cancelled") {
-      // Same shape as a fresh booking, so the interface never has to guess which
-      // fields exist: an existing place simply carries no new discount.
       return {
         alreadyBooked: true,
         bookingId: existing._id,
         status: existing.status,
         paymentStatus: existing.paymentStatus,
         amountPaid: existing.amountPaid,
-        discount: existing.discount ?? 0,
-        total: existing.amountPaid,
-        promoCode: existing.promoCode ?? null,
+        discount: 0,
+        total: 0,
+        promoCode: null,
         reference: existing.reference,
         placesRemaining: Math.max(0, event.capacity - event.seatsTaken),
       };
@@ -105,28 +77,27 @@ export const book = mutation({
         organization: args.organization?.trim() || undefined,
         notes: args.notes?.trim() || undefined,
         status,
-        paymentStatus,
-        paymentMethod: method,
-        amountPaid,
-        promoCode: promo?.code,
-        discount,
+        paymentStatus: "waived",
+        paymentMethod: undefined,
+        amountPaid: 0,
+        promoCode: undefined,
+        discount: 0,
         reference: makeReference(),
         createdAt: Date.now(),
       });
       if (status === "confirmed") {
         await ctx.db.patch(event._id, { seatsTaken: event.seatsTaken + 1 });
       }
-      if (promo !== null) await countUse(ctx, promo.campaign._id);
       const refreshed = await ctx.db.get(existing._id);
       return {
         alreadyBooked: false,
         bookingId: existing._id,
         status,
-        paymentStatus,
-        amountPaid,
-        discount,
-        total,
-        promoCode: promo?.code ?? null,
+        paymentStatus: "waived",
+        amountPaid: 0,
+        discount: 0,
+        total: 0,
+        promoCode: null,
         reference: refreshed?.reference ?? "",
         placesRemaining: Math.max(
           0,
@@ -146,11 +117,11 @@ export const book = mutation({
       organization: args.organization?.trim() || undefined,
       notes: args.notes?.trim() || undefined,
       status,
-      paymentStatus,
-      paymentMethod: method,
-      amountPaid,
-      promoCode: promo?.code,
-      discount,
+      paymentStatus: "waived",
+      paymentMethod: undefined,
+      amountPaid: 0,
+      promoCode: undefined,
+      discount: 0,
       reference,
       createdAt: Date.now(),
     });
@@ -158,17 +129,16 @@ export const book = mutation({
     if (status === "confirmed") {
       await ctx.db.patch(event._id, { seatsTaken: event.seatsTaken + 1 });
     }
-    if (promo !== null) await countUse(ctx, promo.campaign._id);
 
     return {
       alreadyBooked: false,
       bookingId,
       status,
-      paymentStatus,
-      amountPaid,
-      discount,
-      total,
-      promoCode: promo?.code ?? null,
+      paymentStatus: "waived",
+      amountPaid: 0,
+      discount: 0,
+      total: 0,
+      promoCode: null,
       reference,
       placesRemaining: Math.max(
         0,
@@ -220,8 +190,9 @@ export const cancel = mutation({
 });
 
 /**
- * Settle the balance carried on a booking. The customer can pay at checkout or
- * come back and clear it from their own dashboard.
+ * There is nothing to settle on a free event. A booking left carrying a balance
+ * by an older, priced catalogue is cleared here, so a dashboard can never ask
+ * for money that is no longer owed.
  */
 export const settle = mutation({
   args: { registrationId: v.id("registrations") },
@@ -235,17 +206,16 @@ export const settle = mutation({
     if (booking.status === "cancelled") {
       throw new Error("That booking has been released.");
     }
-    const event = await ctx.db.get(booking.eventId);
-    if (event === null) throw new Error("That event no longer exists.");
-    if (booking.paymentStatus !== "due") {
-      return { settled: false, amountPaid: booking.amountPaid };
+    if (booking.paymentStatus === "waived" && booking.amountPaid === 0) {
+      return { settled: false, amountPaid: 0 };
     }
     await ctx.db.patch(registrationId, {
-      paymentStatus: "paid",
-      paymentMethod: "card",
-      amountPaid: event.price,
+      paymentStatus: "waived",
+      paymentMethod: undefined,
+      amountPaid: 0,
+      discount: 0,
     });
-    return { settled: true, amountPaid: event.price };
+    return { settled: true, amountPaid: 0 };
   },
 });
 
@@ -281,7 +251,10 @@ export const mine = query({
   },
 });
 
-/** The guest list for one event, with payment state — owning account only. */
+/**
+ * The guest list for one event — owning account only. A place is free, so the
+ * list carries who is coming rather than what they still owe.
+ */
 export const forEvent = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, { eventId }) => {
@@ -299,7 +272,7 @@ export const forEvent = query({
       .collect();
 
     return {
-      price: event.price,
+      price: 0,
       bookings: rows
         .sort((a, b) => a.createdAt - b.createdAt)
         .map((row) => publicBooking(row)),
@@ -334,7 +307,7 @@ export const forBusiness = query({
                 eventTitle: event?.title ?? "Removed event",
                 eventSlug: event?.slug ?? "",
                 eventStart: event?.startTime ?? 0,
-                price: event?.price ?? 0,
+                price: 0,
                 programmeName: fest.name,
               };
             }),

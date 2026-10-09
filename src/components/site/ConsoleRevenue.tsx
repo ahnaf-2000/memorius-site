@@ -80,23 +80,21 @@ export function ConsoleRevenue() {
         <Kpi
           label="Collected"
           value={formatMoney(data.collected)}
-          detail="Places, shop orders and sponsorship that have settled."
+          detail="Shop orders and sponsorship that have settled."
           icon={<BadgeCheck className="size-4" />}
           tint=""
         />
         <Kpi
           label="Promised"
           value={formatMoney(data.promised)}
-          detail="Still due on places and orders, plus confirmed and pledged sponsorship."
+          detail="Still due on shop orders, plus confirmed and pledged sponsorship."
           icon={<TrendingUp className="size-4" />}
           tint="icon-chip-warm"
         />
         <Kpi
           label="Places"
           value={String(data.tickets)}
-          detail={`${formatMoney(data.ticketPaid)} settled, ${formatMoney(
-            data.ticketDue,
-          )} outstanding.`}
+          detail="Every place is free, so nothing is collected or owed on them."
           icon={<Wallet className="size-4" />}
           tint="icon-chip-cool"
         />
@@ -132,7 +130,6 @@ export function ConsoleRevenue() {
                 <tr className="text-[10px] tracking-[0.12em] text-muted-foreground uppercase">
                   <th className="pb-2 font-medium">Event</th>
                   <th className="pb-2 text-right font-medium">Places</th>
-                  <th className="pb-2 text-right font-medium">Place takings</th>
                   <th className="pb-2 text-right font-medium">Shop</th>
                   <th className="pb-2 text-right font-medium">Sponsors</th>
                   <th className="pb-2 text-right font-medium">Rating</th>
@@ -157,14 +154,6 @@ export function ConsoleRevenue() {
                     </td>
                     <td className="py-3 text-right tabular-nums">
                       {row.tickets}
-                    </td>
-                    <td className="py-3 text-right tabular-nums">
-                      {formatMoney(row.ticketPaid)}
-                      {row.ticketDue > 0 && (
-                        <span className="mt-1 block text-[11px] text-muted-foreground">
-                          {formatMoney(row.ticketDue)} due
-                        </span>
-                      )}
                     </td>
                     <td className="py-3 text-right tabular-nums">
                       {formatMoney(row.shopPaid)}

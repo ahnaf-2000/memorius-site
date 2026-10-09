@@ -136,9 +136,9 @@ export const FEATURES: Feature[] = [
     icon: Receipt,
   },
   {
-    label: "Pay now or later",
+    label: "Pay now or collect",
     detail:
-      "Take the card up front or hold the seat and settle it at the desk on the day.",
+      "Take the card for a shop order up front, or settle it at the desk when it is collected.",
     tone: "booking",
     icon: CreditCard,
   },
@@ -159,14 +159,14 @@ export const FEATURES: Feature[] = [
   {
     label: "Promo codes",
     detail:
-      "Time-boxed campaigns that discount a booking without anyone editing a price list.",
+      "Time-boxed campaigns that discount a shop order without anyone editing a price list.",
     tone: "booking",
     icon: Percent,
   },
   {
     label: "Coded limits",
     detail:
-      "Cap a campaign by uses and by seats, so one leaked code cannot drain a season.",
+      "Cap a campaign by the number of times it may be used, so one leaked code cannot drain a season.",
     tone: "booking",
     icon: Tag,
   },
@@ -201,14 +201,14 @@ export const FEATURES: Feature[] = [
   {
     label: "Settle at the desk",
     detail:
-      "Mark an outstanding balance as taken in one tap, with the method recorded.",
+      "Mark a shop order as collected and paid in one tap, with the method recorded.",
     tone: "booking",
     icon: Banknote,
   },
   {
     label: "Currency by choice",
     detail:
-      "Prices are quoted in the currency the reader picked and converted at an indicative rate.",
+      "Shop prices and sponsorship are quoted in the currency the reader picked, at an indicative rate.",
     tone: "booking",
     icon: Coins,
   },
@@ -222,14 +222,14 @@ export const FEATURES: Feature[] = [
   {
     label: "Merchandise",
     detail:
-      "Caps, programmes and tote bags are sold beside the ticket in the same checkout.",
+      "Caps, programmes and tote bags are sold straight from the event page, in one basket.",
     tone: "booking",
     icon: ShoppingBag,
   },
   {
     label: "Snacks and drinks",
     detail:
-      "The day’s food and drink can be added to the same order as the seat.",
+      "The day’s food and drink are ordered the same way as everything else on the shelf.",
     tone: "booking",
     icon: Coffee,
   },
@@ -264,7 +264,7 @@ export const FEATURES: Feature[] = [
   {
     label: "Revenue overview",
     detail:
-      "Takings by programme, event and payment method, without opening a spreadsheet.",
+      "Shop takings and sponsorship by programme, event and payment method, without opening a spreadsheet.",
     tone: "booking",
     icon: TrendingUp,
   },
@@ -304,9 +304,9 @@ export const FEATURES: Feature[] = [
     icon: Timer,
   },
   {
-    label: "Price per event",
+    label: "Free places",
     detail:
-      "Each event carries its own price; the programme carries the season.",
+      "Every event is free to attend, whoever runs it — no price to set and none to pay.",
     tone: "booking",
     icon: Wallet,
   },

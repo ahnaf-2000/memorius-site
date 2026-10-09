@@ -78,7 +78,13 @@ export function festPhase(
   return "live";
 }
 
-/** Public shape of an event — availability and pricing resolved for the client. */
+/**
+ * Public shape of an event — availability and pricing resolved for the client.
+ *
+ * Every event on the platform is free of charge, so the price a page quotes is
+always zero: a place never costs anything, whoever wrote the row. Whatever the
+legacy `price` column still holds is therefore never what a visitor is shown.
+ */
 export function publicEvent(event: Doc<"events">, now = Date.now()) {
   const state = seatState(event, now);
   return {
@@ -97,7 +103,7 @@ export function publicEvent(event: Doc<"events">, now = Date.now()) {
     capacity: event.capacity,
     seatsTaken: event.seatsTaken,
     remaining: Math.max(0, event.capacity - event.seatsTaken),
-    price: event.price,
+    price: 0,
     registrationClosesAt: event.registrationClosesAt ?? null,
     state,
     stateLabel: SEAT_STATE_LABEL[state],

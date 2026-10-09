@@ -6,7 +6,7 @@ import { mutation } from "./_generated/server";
  * behind by an earlier version — and only showcase data, never a programme a
  * business created itself.
  */
-const SHOWCASE_VERSION = 4;
+const SHOWCASE_VERSION = 5;
 
 /** What is on sale at every seeded event: merchandise to keep, snacks for the day. */
 const SHOP_STOCK = [
@@ -121,9 +121,9 @@ const CAMPAIGNS = [
     festSlug: "operations-summit-2026",
     eventSlug: null,
     code: "EARLYBIRD",
-    title: "Early bird — 15% off the summit week",
+    title: "Early bird — 15% off the summit shop",
     blurb:
-      "Book anything in the Operations Summit while the early bird runs and take 15% off the place.",
+      "The summit itself is free to attend. Take 15% off anything you buy from the shop at an Operations Summit event while the early bird runs.",
     kind: "percent" as const,
     value: 15,
     daysFrom: -6,
@@ -135,9 +135,9 @@ const CAMPAIGNS = [
     festSlug: "data-leadership-2026",
     eventSlug: "data-strategy-intensive",
     code: "TEAM25",
-    title: "Send the team — 25% off the intensive",
+    title: "Send the team — 25% off the shop",
     blurb:
-      "Bringing more than one person to the Data Strategy Intensive? This takes a quarter off each place.",
+      "Places at the Data Strategy Intensive cost nothing. This takes a quarter off anything you buy from its shop.",
     kind: "percent" as const,
     value: 25,
     daysFrom: -3,
@@ -151,7 +151,7 @@ const CAMPAIGNS = [
     code: "MANCHESTER75",
     title: "Manchester launch — a fixed credit",
     blurb:
-      "A credit towards either Client Academy day, while the launch offer lasts.",
+      "A credit towards anything in the shop at either Client Academy day, while the launch offer lasts.",
     kind: "amount" as const,
     value: 7500,
     daysFrom: -1,
@@ -251,9 +251,9 @@ const SPONSORS: Record<
 };
 
 /**
- * Demo catalogue for a business that sells places at its events. Mirrors the
- * real shape of the product: one business running several programmes, each
- * programme holding several events, each event priced per place.
+ * Demo catalogue for a business that runs events. Mirrors the real shape of the
+ * product: one business running several programmes, each programme holding
+ * several events, every event free to attend.
  *
  * Idempotent, so it is safe to call on every visit.
  */
@@ -355,7 +355,7 @@ export const ensureSeeded = mutation({
             host: "Operations Faculty",
             capacity: 140,
             seatsTaken: 96,
-            price: 22000,
+            price: 0,
           },
           {
             title: "AI in Operations Workshop",
@@ -371,7 +371,7 @@ export const ensureSeeded = mutation({
             host: "Dr. Alastair Whitfield",
             capacity: 45,
             seatsTaken: 41,
-            price: 34000,
+            price: 0,
           },
           {
             title: "The Next Decade of Logistics — Keynote",
@@ -403,7 +403,7 @@ export const ensureSeeded = mutation({
             host: "Meridian Group",
             capacity: 80,
             seatsTaken: 80,
-            price: 13500,
+            price: 0,
           },
         ],
       },
@@ -433,7 +433,7 @@ export const ensureSeeded = mutation({
             host: "Dr. Alastair Whitfield",
             capacity: 60,
             seatsTaken: 52,
-            price: 78000,
+            price: 0,
           },
           {
             title: "Metrics That Matter",
@@ -449,7 +449,7 @@ export const ensureSeeded = mutation({
             host: "Priya Raman",
             capacity: 40,
             seatsTaken: 18,
-            price: 26000,
+            price: 0,
           },
           {
             title: "Analytics Roundtable",
@@ -495,7 +495,7 @@ export const ensureSeeded = mutation({
             host: "Client Services",
             capacity: 90,
             seatsTaken: 62,
-            price: 42000,
+            price: 0,
           },
           {
             title: "Quarterly Planning Clinic",
@@ -511,7 +511,7 @@ export const ensureSeeded = mutation({
             host: "Client Services",
             capacity: 30,
             seatsTaken: 27,
-            price: 15000,
+            price: 0,
           },
         ],
       },

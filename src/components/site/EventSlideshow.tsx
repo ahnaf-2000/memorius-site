@@ -99,7 +99,7 @@ function Slide({ event }: { event: EventListItem }) {
         </div>
 
         <div className="min-w-0 sm:mt-6">
-          <p className="label-eyebrow">Price per place</p>
+          <p className="label-eyebrow">Admission</p>
           <p className="font-display mt-2 text-[22px] leading-none tabular-nums">
             {priceLabel(event.price)}
           </p>

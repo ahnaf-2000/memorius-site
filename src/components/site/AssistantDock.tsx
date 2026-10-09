@@ -19,7 +19,7 @@ const RING =
 const OPENING: ChatTurn = {
   role: "assistant",
   content:
-    "Hello — I am Memo, the assistant here. Ask me what is on, what a place costs in your currency, how the shop works, how to sponsor an event, or how payments are handled.",
+    "Hello — I am Memo, the assistant here. Ask me what is on, how booking a free place works, how the shop works, how to sponsor an event, or how payments for those are handled.",
   meta: null,
 };
 
@@ -465,7 +465,7 @@ export function AssistantDock() {
                 ref={inputRef}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
-                placeholder="Ask about events, prices, payments…"
+                placeholder="Ask about events, places, the shop…"
                 aria-label="Ask the assistant"
                 className="h-9 min-w-0 flex-1 rounded-full border border-border bg-background px-3.5 text-[13px] outline-none transition-colors focus-visible:border-foreground/25"
               />

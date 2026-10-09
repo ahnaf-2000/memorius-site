@@ -174,7 +174,7 @@ function CampaignTicket({
           <span className="text-[11px] text-muted-foreground tabular-nums">
             {campaign.remaining === 0
               ? "All claimed"
-              : `${pluralize(campaign.remaining, "use")} left at this price`}
+              : `${pluralize(campaign.remaining, "use")} left`}
           </span>
         )}
       </div>

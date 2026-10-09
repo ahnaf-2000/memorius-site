@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { makeReference, publicBooking, publicEvent, requireUserId, uniqueSlug } from "./model";
+import { publicBooking, publicEvent, requireUserId, uniqueSlug } from "./model";
 
 const formatValidator = v.union(
   v.literal("in-person"),
@@ -150,7 +150,6 @@ export const create = mutation({
     venue: v.string(),
     host: v.optional(v.string()),
     capacity: v.number(),
-    price: v.optional(v.number()),
     registrationClosesAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -162,9 +161,6 @@ export const create = mutation({
     }
     if (args.endTime < args.startTime) {
       throw new Error("The end time has to come after the start time.");
-    }
-    if (args.price !== undefined && args.price !== 0) {
-      throw new Error("Every event is free, so the price has to be 0.");
     }
     const slug = await uniqueSlug(ctx, "events", args.title);
     const id = await ctx.db.insert("events", {
@@ -181,6 +177,7 @@ export const create = mutation({
       host: args.host?.trim() || undefined,
       capacity: Math.max(1, Math.round(args.capacity)),
       seatsTaken: 0,
+      // Every event on the platform is free of charge.
       price: 0,
       registrationClosesAt: args.registrationClosesAt,
       createdAt: Date.now(),
@@ -202,7 +199,6 @@ export const update = mutation({
     venue: v.optional(v.string()),
     host: v.optional(v.string()),
     capacity: v.optional(v.number()),
-    price: v.optional(v.number()),
     registrationClosesAt: v.optional(v.number()),
   },
   handler: async (ctx, { id, ...patch }) => {
@@ -212,9 +208,6 @@ export const update = mutation({
     const fest = await ctx.db.get(event.festId);
     if (fest === null || fest.ownerId !== userId) {
       throw new Error("Only the owning account can edit this event.");
-    }
-    if (patch.price !== undefined && patch.price !== 0) {
-      throw new Error("Every event is free, so the price has to be 0.");
     }
     await ctx.db.patch(id, {
       ...(patch.title !== undefined ? { title: patch.title.trim() } : {}),
@@ -237,7 +230,6 @@ export const update = mutation({
       ...(patch.capacity !== undefined
         ? { capacity: Math.max(1, Math.round(patch.capacity)) }
         : {}),
-      ...(patch.price !== undefined ? { price: 0 } : {}),
       ...(patch.registrationClosesAt !== undefined
         ? { registrationClosesAt: patch.registrationClosesAt }
         : {}),
@@ -268,221 +260,6 @@ export const remove = mutation({
       .collect();
     for (const comment of comments) await ctx.db.delete(comment._id);
     await ctx.db.delete(id);
-    return { removed: true };
-  },
-});
-
-/** The shop is still supported, but every order is recorded as free. */
-export const checkout = mutation({
-  args: {
-    eventId: v.id("events"),
-    items: v.array(
-      v.object({
-        productId: v.id("products"),
-        quantity: v.number(),
-      }),
-    ),
-    paymentMethod: v.union(
-      v.literal("card"),
-      v.literal("on-site"),
-      v.literal("bkash"),
-      v.literal("nagad"),
-      v.literal("google-pay"),
-      v.literal("paypal"),
-    ),
-    fullName: v.string(),
-    email: v.string(),
-    country: v.string(),
-    promoCode: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const userId = await requireUserId(ctx);
-    const event = await ctx.db.get(args.eventId);
-    if (event === null) throw new Error("That event no longer exists.");
-
-    const fest = await ctx.db.get(event.festId);
-    if (fest === null || fest.ownerId !== userId) {
-      throw new Error("Only the owning account can check out here.");
-    }
-
-    const productRows = await Promise.all(
-      args.items.map(async (item) => {
-        const product = await ctx.db.get(item.productId);
-        if (product === null) throw new Error("Unknown shop item.");
-        if (product.eventId !== args.eventId) {
-          throw new Error("That item does not belong to this event.");
-        }
-        if (product.stock - product.sold < item.quantity) {
-          throw new Error(`Only ${product.stock - product.sold} left of ${product.name}.`);
-        }
-        return product;
-      }),
-    );
-
-    const subtotal = args.items.reduce(
-      (sum, item, index) => sum + productRows[index].price * item.quantity,
-      0,
-    );
-
-    const reference = makeReference();
-    const orderId = await ctx.db.insert("orders", {
-      eventId: args.eventId,
-      festId: event.festId,
-      userId,
-      items: args.items.map((item, index) => ({
-        productId: item.productId,
-        name: productRows[index].name,
-        kind: productRows[index].kind,
-        unitPrice: productRows[index].price,
-        quantity: item.quantity,
-      })),
-      subtotal,
-      promoCode: undefined,
-      discount: 0,
-      country: args.country,
-      paymentMethod: args.paymentMethod,
-      paymentStatus: "waived",
-      amountPaid: 0,
-      reference,
-      fullName: args.fullName.trim(),
-      email: args.email.trim().toLowerCase(),
-      status: "placed",
-      createdAt: Date.now(),
-    });
-
-    for (const item of args.items) {
-      await ctx.db.patch(item.productId, {
-        sold: (await ctx.db.get(item.productId))!.sold + item.quantity,
-      });
-    }
-
-    return {
-      orderId,
-      reference,
-      subtotal,
-      discount: 0,
-      promoCode: undefined,
-      paymentStatus: "waived",
-    };
-  },
-});
-
-/** List and manage shop items for one event, so the checkout has products. */
-export const managed = query({
-  args: { eventId: v.id("events") },
-  handler: async (ctx, { eventId }) => {
-    const event = await ctx.db.get(eventId);
-    if (event === null) return [];
-
-    const products = await ctx.db
-      .query("products")
-      .withIndex("by_event", (q) => q.eq("eventId", eventId))
-      .collect();
-
-    return products.map((product) => ({
-      _id: product._id,
-      eventId: event._id,
-      name: product.name,
-      kind: product.kind,
-      description: product.description,
-      price: product.price,
-      stock: product.stock,
-      sold: product.sold,
-      available: product.stock - product.sold,
-      active: product.active,
-    }));
-  },
-});
-
-/** Create a new shop item for this event, so the checkout has products. */
-export const createProduct = mutation({
-  args: {
-    eventId: v.id("events"),
-    name: v.string(),
-    kind: v.union(
-      v.literal("merchandise"),
-      v.literal("snack"),
-    ),
-    description: v.optional(v.string()),
-    price: v.number(),
-    stock: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const userId = await requireUserId(ctx);
-    const event = await ctx.db.get(args.eventId);
-    if (event === null) throw new Error("That event no longer exists.");
-    const fest = await ctx.db.get(event.festId);
-    if (fest === null || fest.ownerId !== userId) {
-      throw new Error("Only the owning account can add items here.");
-    }
-    const id = await ctx.db.insert("products", {
-      eventId: args.eventId,
-      festId: event.festId,
-      name: args.name.trim(),
-      kind: args.kind,
-      description: args.description?.trim() || undefined,
-      price: Math.max(0, Math.round(args.price)),
-      stock: Math.max(0, Math.round(args.stock)),
-      sold: 0,
-      active: true,
-      createdAt: Date.now(),
-    });
-    return { id };
-  },
-});
-
-/** Update a shop item on this event, so the checkout does not drift. */
-export const updateProduct = mutation({
-  args: {
-    productId: v.id("products"),
-    name: v.optional(v.string()),
-    kind: v.optional(v.union(
-      v.literal("merchandise"),
-      v.literal("snack"),
-    )),
-    description: v.optional(v.string()),
-    price: v.optional(v.number()),
-    stock: v.optional(v.number()),
-    active: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const userId = await requireUserId(ctx);
-    const product = await ctx.db.get(args.productId);
-    if (product === null) throw new Error("That shop item no longer exists.");
-    const fest = await ctx.db.get(product.festId);
-    if (fest === null || fest.ownerId !== userId) {
-      throw new Error("Only the owning account can edit items here.");
-    }
-    await ctx.db.patch(args.productId, {
-      ...(args.name !== undefined ? { name: args.name.trim() } : {}),
-      ...(args.kind !== undefined ? { kind: args.kind } : {}),
-      ...(args.description !== undefined
-        ? { description: args.description.trim() || undefined }
-        : {}),
-      ...(args.price !== undefined
-        ? { price: Math.max(0, Math.round(args.price)) }
-        : {}),
-      ...(args.stock !== undefined
-        ? { stock: Math.max(0, Math.round(args.stock)) }
-        : {}),
-      ...(args.active !== undefined ? { active: args.active } : {}),
-    });
-    return { ok: true };
-  },
-});
-
-/** Remove a shop item from this event, so the checkout reflects reality. */
-export const removeProduct = mutation({
-  args: { productId: v.id("products") },
-  handler: async (ctx, { productId }) => {
-    const userId = await requireUserId(ctx);
-    const product = await ctx.db.get(productId);
-    if (product === null) return { removed: false };
-    const fest = await ctx.db.get(product.festId);
-    if (fest === null || fest.ownerId !== userId) {
-      throw new Error("Only the owning account can remove items here.");
-    }
-    await ctx.db.delete(productId);
     return { removed: true };
   },
 });

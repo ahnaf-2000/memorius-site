@@ -94,12 +94,12 @@ const FLOW = [
   {
     index: "03",
     title: "Event",
-    copy: "Date, time, venue, places and price on a single page.",
+    copy: "Date, time, venue and places on a single page, free to attend.",
   },
   {
     index: "04",
     title: "Booking",
-    copy: "A held place, a payment record, and a line on your own schedule.",
+    copy: "A held place, a reference, and a line on your own schedule.",
   },
 ];
 
@@ -123,7 +123,7 @@ const FACTS = [
   },
   {
     label: "Any market",
-    copy: "Prices follow the visitor's country, so the same event reads in taka, dollars or pounds.",
+    copy: "Shop prices follow the visitor's country, so the same tote reads in taka, dollars or pounds.",
   },
   {
     label: "Never stuck",
@@ -145,7 +145,7 @@ const VOICES = [
   "No shared inbox",
   "Waiting lists promote themselves",
   "One ledger for places and shop",
-  "Prices in your market",
+  "Shop prices in your market",
   "Rated by the room",
   "Sponsors see where it went",
   "Memo answers day or night",
@@ -157,7 +157,7 @@ const EASTER_EGGS: RailItem[] = [
   { name: "Four tiers", icon: Handshake, tint: "var(--plum)" },
   { name: "One rating", icon: Star, tint: "var(--brand)" },
   { name: "One ledger", icon: TrendingUp, tint: "var(--cool)" },
-  { name: "Local prices", icon: Globe, tint: "var(--brand)" },
+  { name: "Local shop prices", icon: Globe, tint: "var(--brand)" },
   { name: "Memo", icon: Sparkles, tint: "var(--warm)" },
   { name: "Waiting list", icon: CalendarCheck, tint: "var(--cool)" },
   { name: "Six payment rails", icon: Ticket, tint: "var(--warm)" },
@@ -201,14 +201,14 @@ const FEATURES: {
     icon: TrendingUp,
     kind: "ledger",
     title: "Revenue on one screen",
-    copy: "Places, shop orders and sponsorship in a single ledger, split into collected, promised and still due.",
+    copy: "Shop orders and sponsorship in a single ledger, split into collected, promised and still due.",
     tint: "icon-chip-cool",
   },
   {
     icon: Globe,
     kind: "fx",
-    title: "Prices in your market",
-    copy: "Quote in BDT, USD, GBP or anywhere else. The figure follows the visitor's country, and can be changed any time.",
+    title: "Shop prices in your market",
+    copy: "Merchandise and sponsorship quote in BDT, USD, GBP or anywhere else. The figure follows the visitor's country, and can be changed any time.",
     tint: "icon-chip-cool",
   },
   {
@@ -231,15 +231,15 @@ const FAQ = [
   },
   {
     q: "How do payments work, and where does the money go?",
-    a: "Checkout accepts bKash, Nagad, Google Pay, PayPal, card, or settling at the desk. Every payment is recorded against a reference and appears in the organizer's revenue screen, which is also where they set where payouts should land.",
+    a: "Places are free, so nothing is collected to book one — a reference is issued and that is the whole transaction. Merchandise, snacks and sponsorship do take payment: bKash, Nagad, Google Pay, PayPal, card, or settling at the desk. Every payment is recorded against a reference and appears in the organizer's revenue screen, which is also where they set where payouts should land.",
   },
   {
     q: "Can prices be shown in my own currency?",
-    a: "Yes. Choose your country from the menu in the header and every amount on the site is requoted locally, from the Bangla taka to the US dollar. Signed-in accounts remember the choice.",
+    a: "Yes. Choose your country from the menu in the header and every shop price and sponsorship on the site is requoted locally, from the Bangla taka to the US dollar. Signed-in accounts remember the choice.",
   },
   {
     q: "What can an organizer actually sell?",
-    a: "Three things on the same event: places at the event, merchandise to take home, and snacks or drinks for the day. Sponsorship is sold at programme or event level, in four tiers.",
+    a: "Two things on the same event: merchandise to take home, and snacks or drinks for the day. A place itself is always free, so there is no ticket price to set. Sponsorship is sold at programme or event level, in four tiers.",
   },
   {
     q: "Does the assistant need a model key?",
@@ -1391,7 +1391,7 @@ function MemoSection({ events }: { events: EventListItem[] | undefined }) {
               <p className="mt-5 text-[12px] leading-6 text-muted-foreground">
                 Memo opens in the corner of the page, keeps the thread while you
                 browse, and answers from the same records the catalogue prints —
-                a price you were quoted is a price on an event page.
+                the place count it quotes is the place count on the page.
               </p>
             </div>{" "}
             <div className="rounded-xl border border-border bg-card p-6">
@@ -1601,7 +1601,7 @@ export default function Landing() {
       "Hackathons",
       ...(events ?? []).map((event) => event.category),
       "Book in a minute",
-      "Pay your way",
+      "Free places",
       "Sponsor a season",
     ]),
   );
@@ -1659,7 +1659,7 @@ export default function Landing() {
                 <p className="mt-7 max-w-xl text-[15px] leading-7 text-muted-foreground sm:text-[16px]">
                   Memorius is the catalogue your customers browse and the
                   booking desk your business runs. Search every programme, open
-                  an event, choose how you pay, and keep it all on one schedule.
+                  an event, take a free place, and keep it all on one schedule.
                 </p>
               </Reveal>
 
@@ -1861,7 +1861,7 @@ export default function Landing() {
             <SectionHeading
               eyebrow="What's on"
               title="Every event running now, without the searching."
-              description="Nothing to filter and nothing to type. Every event open for booking passes through here in turn — date, venue, price and the places still left."
+              description="Nothing to filter and nothing to type. Every event open for booking passes through here in turn — date, venue and the places still left."
               action={
                 <Button
                   asChild
@@ -2016,9 +2016,10 @@ export default function Landing() {
                   Run the programme. Skip the spreadsheet.
                 </h2>
                 <p className="mt-5 max-w-lg text-[14px] leading-7 text-muted-foreground">
-                  Publish a programme in a minute, add its events, set a price
-                  per place, and watch bookings and payments arrive on one
-                  screen. No shared inbox, no rows copied out of a form.
+                  Publish a programme in a minute, add its events, and watch the
+                  bookings arrive on one screen. A place costs nothing, so
+                  there is no price list to keep. No shared inbox, no rows
+                  copied out of a form.
                 </p>
 
                 <ul className="mt-10 space-y-7 border-t border-border pt-8">
@@ -2112,7 +2113,7 @@ export default function Landing() {
             <SectionHeading
               eyebrow="Everything included"
               title="The parts other platforms charge extra for, already in."
-              description="Selling, sponsorship, feedback, payments and a price that knows where the customer is — all inside the same calendar."
+              description="A shop, sponsorship, feedback and money that knows where the customer is — all inside the same calendar."
             />
             <div className="mt-12 grid gap-5 md:grid-cols-2">
               {FEATURES.map((feature, index) => (

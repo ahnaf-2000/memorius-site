@@ -285,7 +285,6 @@ function AddEventDialog({ festId }: { festId: Id<"fests"> }) {
     venue: "",
     host: "",
     capacity: "40",
-    price: "0",
     summary: "",
     description: "",
     startTime: nextWeekAt(9),
@@ -310,7 +309,6 @@ function AddEventDialog({ festId }: { festId: Id<"fests"> }) {
         venue: form.venue,
         host: form.host,
         capacity: Number(form.capacity) || 1,
-        price: Math.round(Number(form.price || 0) * 100),
         summary: form.summary,
         description: form.description,
         startTime,
@@ -380,19 +378,6 @@ function AddEventDialog({ festId }: { festId: Id<"fests"> }) {
                 value={form.capacity}
                 onChange={(event) =>
                   setForm({ ...form, capacity: event.target.value })
-                }
-                className={inputClass}
-              />
-            </FormField>
-            <FormField id="price" label="Price per place">
-              <Input
-                id="price"
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.price}
-                onChange={(event) =>
-                  setForm({ ...form, price: event.target.value })
                 }
                 className={inputClass}
               />
@@ -747,8 +732,8 @@ function ConsoleEventRow({ event }: { event: ConsoleEvent }) {
           ["Confirmed", String(event.confirmed)],
           ["Waiting list", String(event.waitlisted)],
           ["Places", `${event.seatsTaken}/${event.capacity}`],
-          ["Collected", formatMoney(event.collected)],
-          ["Outstanding", formatMoney(event.outstanding)],
+          ["Places left", String(event.remaining)],
+          ["Price", "Free"],
         ].map(([label, value]) => (
           <div key={label}>
             <p className="text-[10px] tracking-[0.12em] text-muted-foreground uppercase">
@@ -832,14 +817,6 @@ export default function Admin() {
     (sum, event) => sum + event.seatsTaken,
     0,
   );
-  const collected = consoleEvents.reduce(
-    (sum, event) => sum + event.collected,
-    0,
-  );
-  const outstanding = consoleEvents.reduce(
-    (sum, event) => sum + event.outstanding,
-    0,
-  );
   const waiting = consoleEvents.filter((event) => event.waitlisted > 0);
 
   const eventsFor = (festId: Id<"fests">) =>
@@ -858,7 +835,7 @@ export default function Admin() {
                 Admin console
               </h1>
               <p className="mt-4 max-w-xl text-[14px] leading-7 text-muted-foreground">
-                Programmes, events, bookings and payments on one screen. Create
+                Programmes, events, bookings and the shop on one screen. Create
                 a programme and it appears in the public catalogue immediately.
               </p>
             </div>
@@ -896,12 +873,12 @@ export default function Admin() {
               label="Places booked"
             />
             <StatBlock
-              value={events === undefined ? "—" : formatMoney(collected)}
-              label="Collected"
+              value={events === undefined ? "—" : String(consoleEvents.length)}
+              label="Events published"
             />
             <StatBlock
-              value={events === undefined ? "—" : formatMoney(outstanding)}
-              label="Outstanding"
+              value={programmes === undefined ? "—" : String(programmes.length)}
+              label="Programmes"
             />
           </div>
 
@@ -1072,8 +1049,9 @@ export default function Admin() {
                 <div>
                   <p className="label-eyebrow">Programmes you run</p>
                   <p className="mt-3 max-w-xl text-[13px] leading-6 text-muted-foreground">
-                    Create a programme, fill it with events, set a price per
-                    place, and follow every booking as it lands.
+                    Create a programme, fill it with events and follow every
+                    booking as it lands — places are free, so there is no price
+                    list to keep.
                   </p>
                 </div>
                 <CreateProgrammeDialog />

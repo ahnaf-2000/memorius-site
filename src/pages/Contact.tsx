@@ -28,7 +28,7 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 
 /** Mirrors the topics the contact mutation accepts; the field is free text. */
 const TOPICS = [
-  "Booking or payment",
+  "Booking a place",
   "Running a programme",
   "Sponsorship",
   "Merchandise and snacks",
@@ -470,8 +470,8 @@ export default function Contact() {
                 </div>
                 <p className="mt-5 flex items-start gap-2.5 text-[13px] leading-6 text-muted-foreground">
                   <Sparkles className="mt-0.5 size-4 shrink-0" />
-                  In a hurry? The assistant in the corner answers dates, prices
-                  and places left from the live catalogue, on any page.
+                  In a hurry? The assistant in the corner answers dates, places
+                  left and shop prices from the live catalogue, on any page.
                 </p>
               </div>
             </motion.aside>

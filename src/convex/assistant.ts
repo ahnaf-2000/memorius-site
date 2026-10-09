@@ -98,7 +98,8 @@ export const snapshot = internalQuery({
         startTime: event.startTime,
         venue: event.venue,
         category: event.category,
-        price: event.price,
+        // Every event is free of charge; the shop is where money is spent.
+        price: 0,
         remaining: Math.max(0, event.capacity - event.seatsTaken),
         capacity: event.capacity,
       })),
@@ -285,11 +286,11 @@ function systemPrompt(data: Snapshot, stats: PlatformOverview) {
     "",
     "HOW THE PRODUCT WORKS",
     "- Structure: a business runs programmes, a programme holds events, an event takes bookings.",
-    "- Booking: open an event and reserve a place; a reference is issued at once, and a full event takes a waiting list that promotes automatically.",
-    "- Shop: each event sells merchandise and snacks in one basket, collected at the desk.",
+    "- Booking: every event is free to attend, so a place costs nothing; open an event, reserve it, and a reference is issued at once. A full event takes a waiting list that promotes automatically.",
+    "- Shop: each event sells merchandise and snacks in one basket, collected at the desk. This is the only thing on an event that is paid for.",
     "- Sponsorship: four tiers — Community, Silver, Gold, Lead — at programme or event level.",
-    "- Money: bKash, Nagad, Google Pay, PayPal, card or settle on site; organizers set payouts in the admin console; prices requote into the visitor's market, and the live figures below are in US dollars.",
-    "- Reviews: one rating per attendee, averaged onto the event card. Promotions: a code takes money off a place or a shop order, inside a window, optionally capped.",
+    "- Money: the shop and sponsorship are paid by bKash, Nagad, Google Pay, PayPal, card or settle on site; organizers set payouts in the admin console; those prices requote into the visitor's market, and the live figures below are in US dollars.",
+    "- Reviews: one rating per attendee, averaged onto the event card. Promotions: a code takes money off a shop order, inside a window, optionally capped. A promotion can never make a free place cheaper.",
     "- Accounts: a dashboard for customers, an admin console for organizers; a dark appearance and a colour-blind palette are both available.",
     "",
     "RULES",
@@ -363,7 +364,7 @@ function fallbackAnswer(question: string, data: Snapshot) {
     case "when":
       return `The next three events are ${list}. Everything on sale is listed at /events, and each event page carries the full date and time.`;
     case "price":
-      return `Prices are per place: ${list}. The figure follows your country — change it from the region menu and the whole site re-quotes in your local currency.`;
+      return `Every place is free: ${list}. Nothing is charged to attend — the only prices on the site are in the shop and on sponsorship, and those follow your country, from the region menu.`;
     case "booking":
       return `Open any event and choose “Reserve a place”. You keep a reference immediately, and if the room is full you join the waiting list and are promoted automatically. Places left right now: ${list}.`;
     case "shop":
@@ -373,7 +374,7 @@ function fallbackAnswer(question: string, data: Snapshot) {
     case "review":
       return `Anyone signed in can leave a rating and a short review on an event page once it has happened, and the average shows on the event card.`;
     case "payment":
-      return `You can pay by bKash, Nagad, Google Pay, PayPal or card, or settle at the desk on the day. Organizers set where their own payouts land in the admin console.`;
+      return `A place costs nothing, so there is no payment to make for one. The shop and sponsorship take bKash, Nagad, Google Pay, PayPal or card, or settle at the desk on the day. Organizers set where their own payouts land in the admin console.`;
     case "compose": {
       // A usable starting draft, built only from facts on the site.
       const event = next[0];

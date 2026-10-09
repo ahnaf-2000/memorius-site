@@ -30,7 +30,7 @@ const RAIL_NAMES = [
   "Four tiers",
   "One rating",
   "One ledger",
-  "Local prices",
+  "Local shop prices",
   "Memo",
   "Waiting list",
   "Six payment rails",

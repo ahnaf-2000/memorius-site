@@ -68,11 +68,11 @@ export default function Report() {
       ["Occupancy, %", String(stats.events.occupancy)],
       ["Places sold", String(stats.money.placesSold)],
       ["Awaiting settlement", String(stats.money.awaitingSettlement)],
-      ["Places collected", money(stats.money.ticketsCollected)],
+      ["Places collected", "Nothing — every place is free"],
       ["Shop collected", money(stats.money.shopCollected)],
       ["Shop orders", String(stats.money.orders)],
       ["Shop items", String(stats.money.shopItems)],
-      ["Average place", money(stats.money.averageTicket)],
+      ["Average place", "Free to attend"],
       ["Sponsors pledged", money(stats.money.sponsorsPledged)],
       ["Sponsors collected", money(stats.money.sponsorsCollected)],
       ["Reviews", String(stats.reviews.count)],
@@ -86,7 +86,7 @@ export default function Report() {
         String(row.booked),
         String(row.capacity),
         String(row.fill),
-        money(row.price),
+        "Free to attend",
       ]),
       [],
       ["Category", "Events", "Capacity", "Booked", "Fill %"],
@@ -251,10 +251,7 @@ export default function Report() {
                     value={money(stats.money.collected)}
                     label="Collected so far"
                   />
-                  <Figure
-                    value={money(stats.money.averageTicket)}
-                    label="Average place"
-                  />
+                  <Figure value="Free" label="Every place" />
                   <Figure
                     value={
                       stats.reviews.average === null
@@ -313,9 +310,7 @@ export default function Report() {
                           </div>
                           <p className="text-right text-[12px] tabular-nums text-muted-foreground">
                             {row.booked} / {row.capacity} ·{" "}
-                            <span className="text-foreground">
-                              {money(row.price)}
-                            </span>
+                            <span className="text-foreground">Free</span>
                           </p>
                         </div>
                       ))}
@@ -363,10 +358,7 @@ export default function Report() {
                 {/* Money */}
                 <Section title="Where the money came from">
                   <div className="grid gap-x-8 gap-y-5 sm:grid-cols-3">
-                    <Figure
-                      value={money(stats.money.ticketsCollected)}
-                      label="Collected for places"
-                    />
+                    <Figure value="Free" label="Places to attend" />
                     <Figure
                       value={money(stats.money.shopCollected)}
                       label={`Shop, ${stats.money.orders} orders`}

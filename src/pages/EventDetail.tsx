@@ -1,12 +1,7 @@
 import { EventList, StatusDot } from "@/components/site/EventList";
-import {
-  PromoCodeField,
-  type AppliedPromo,
-} from "@/components/site/PromoCodeField";
 import { EventReviews } from "@/components/site/EventReviews";
 import { EventShop } from "@/components/site/EventShop";
 import { EventSponsors } from "@/components/site/EventSponsors";
-import { MethodPicker, TestModeNote } from "@/components/site/PaymentMethods";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { celebrate } from "@/components/site/LiveMotion";
 import { SiteHeader } from "@/components/site/SiteHeader";
@@ -42,7 +37,7 @@ import {
   seatSummary,
 } from "@/lib/format";
 import { award } from "@/lib/keepsakes";
-import type { CommentView, EventView, PaymentMethod } from "@/lib/types";
+import type { CommentView, EventView } from "@/lib/types";
 import { useMutation, useQuery } from "convex/react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { motion } from "framer-motion";
@@ -158,7 +153,6 @@ function BookingPanel({
     notes: "",
   });
   const [edited, setEdited] = useState<Record<string, boolean>>({});
-  const [method, setMethod] = useState<PaymentMethod>("bkash");
   const [step, setStep] = useState<"details" | "checkout">("details");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -171,7 +165,6 @@ function BookingPanel({
     promoCode: string | null;
     bookingId: Id<"registrations">;
   } | null>(null);
-  const [promo, setPromo] = useState<AppliedPromo | null>(null);
 
   // Fields read from the account until the customer edits them. Deriving this
   // during render keeps the prefill out of an effect.
@@ -194,7 +187,6 @@ function BookingPanel({
       : Math.round((event.seatsTaken / event.capacity) * 100);
   const isFull = event.state === "full";
   const closed = !event.accepting;
-  const payable = event.price > 0;
 
   const reference = receipt?.reference ?? activeBooking?.reference ?? null;
   const paymentStatus =
@@ -212,8 +204,6 @@ function BookingPanel({
         ...form,
         fullName,
         email,
-        paymentMethod: payable ? method : undefined,
-        promoCode: promo?.code,
       });
       setReceipt({
         reference: result.reference,
@@ -256,16 +246,11 @@ function BookingPanel({
     }
   }
 
-  // Once there is a booking its own figure is the truth; before that, the code
-  // on screen is. Either way the customer reads the number they will be charged.
-  const discountApplied =
-    reference !== null ? (receipt?.discount ?? 0) : (promo?.discount ?? 0);
-  const totalDue = Math.max(0, event.price - discountApplied);
-
+  // Every place is free, so the only money a booking can carry is a balance an
+  // older, priced catalogue left behind — and that is cleared, not collected.
   function paymentLine() {
-    if (paymentStatus === "waived") return "No charge";
     if (paymentStatus === "paid") return `${formatMoney(amountPaid)} paid`;
-    return `${formatMoney(totalDue)} due on the day`;
+    return "No charge — every place here is free";
   }
 
   return (
@@ -328,15 +313,6 @@ function BookingPanel({
               <CreditCard className="size-3.5" />
               {paymentLine()}
             </p>
-            {discountApplied > 0 && (
-              <p className="note-open mt-3 flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-[11px]">
-                <BadgeCheck className="size-3.5" />
-                {receipt?.promoCode ??
-                  activeBooking?.promoCode ??
-                  promo?.code}{" "}
-                took {formatMoney(discountApplied)} off
-              </p>
-            )}
           </div>
 
           <div className="mt-5 flex flex-col gap-2">
@@ -528,49 +504,13 @@ function BookingPanel({
                 label="Price per place"
                 value={priceLabel(event.price)}
               />
-              {discountApplied > 0 && (
-                <div className="mt-3 flex items-baseline justify-between gap-6">
-                  <dt className="text-[13px] text-muted-foreground">
-                    {promo?.code ?? receipt?.promoCode ?? "Promotion"}
-                  </dt>
-                  <dd className="text-tone-open text-[13px] tabular-nums">
-                    −{formatMoney(discountApplied)}
-                  </dd>
-                </div>
-              )}
-              <motion.div
-                key={totalDue}
-                initial={{ opacity: 0, y: -3 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, ease: EASE }}
-                className="mt-3 flex items-baseline justify-between gap-6"
-              >
-                <dt className="text-[13px] font-medium">Total</dt>
-                <dd className="font-display text-[18px] tabular-nums">
-                  {formatMoney(totalDue)}
-                </dd>
-              </motion.div>
             </div>
           </dl>
 
-          {payable ? (
-            <div className="space-y-2.5">
-              <PromoCodeField
-                subtotal={event.price}
-                applied={promo}
-                onApply={setPromo}
-              />
-              <p className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
-                Payment
-              </p>
-              <MethodPicker value={method} onChange={setMethod} />
-              <TestModeNote />
-            </div>
-          ) : (
-            <p className="rounded-md border border-border bg-background px-4 py-3 text-[12px] leading-5 text-muted-foreground">
-              This event is free of charge. Nothing is collected at checkout.
-            </p>
-          )}
+          <p className="rounded-md border border-border bg-background px-4 py-3 text-[12px] leading-5 text-muted-foreground">
+            Every place is free of charge. Nothing is collected here — confirm
+            and your reference is issued straight away.
+          </p>
 
           {error !== null && (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[12px] leading-5 text-destructive">
@@ -588,16 +528,10 @@ function BookingPanel({
             ) : (
               <Check className="size-4" />
             )}
-            {isFull
-              ? "Join the waiting list"
-              : payable && method !== "on-site"
-                ? `Pay ${formatMoney(totalDue)} and confirm`
-                : "Confirm booking"}
+            {isFull ? "Join the waiting list" : "Confirm booking"}
           </Button>
           <p className="text-center text-[11px] text-muted-foreground">
-            {payable && method === "on-site"
-              ? `${formatMoney(totalDue)} stays due until the event.`
-              : "A reference appears immediately after you confirm."}
+            A reference appears immediately after you confirm.
           </p>
         </form>
       )}
@@ -970,7 +904,7 @@ export default function EventDetail() {
                 <Fact
                   icon={<Users className="size-3.5" />}
                   label="Places"
-                  value={`${event.capacity} places · ${event.seatsTaken} booked · ${priceLabel(event.price)} each`}
+                  value={`${event.capacity} places · ${event.seatsTaken} booked · free to attend`}
                 />
               </div>
 
@@ -994,9 +928,7 @@ export default function EventDetail() {
                 <h2 className="label-eyebrow">Booking and payment</h2>
                 <ul className="mt-6 max-w-2xl space-y-4 border-t border-border pt-6">
                   {[
-                    event.price === 0
-                      ? "There is no charge for this event."
-                      : `${formatMoney(event.price)} per place. Pay by bKash, Nagad, Google Pay, PayPal or card at checkout, or settle on the day.`,
+                    "Every event here is free to attend. A place never costs anything, whatever the programme or the room.",
                     event.capacity - event.seatsTaken > 0
                       ? `${event.capacity - event.seatsTaken} places remain. Once they are gone, new bookings join the waiting list.`
                       : "The room is full. New bookings join the waiting list and are promoted automatically.",
