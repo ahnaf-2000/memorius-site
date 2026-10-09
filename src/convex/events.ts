@@ -45,7 +45,9 @@ export const list = query({
       .map((event) => {
         const fest = festById.get(event.festId);
         return {
-          ...publicEvent(event, now),
+          // The programme rides along because the cancellation policy lives on
+          // it: an event that says nothing inherits the season's answer.
+          ...publicEvent(event, now, fest ?? null),
           festName: fest?.name ?? "Unassigned",
           festSlug: fest?.slug ?? "",
           organization: fest?.organization ?? "",
@@ -109,7 +111,7 @@ export const getBySlug = query({
       alsoInProgramme: siblings
         .filter((sibling) => sibling._id !== event._id)
         .sort((a, b) => a.startTime - b.startTime)
-        .map((sibling) => publicEvent(sibling, now))
+        .map((sibling) => publicEvent(sibling, now, fest))
         .slice(0, 4),
     };
   },
