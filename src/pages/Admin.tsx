@@ -1,4 +1,8 @@
+import { ConsoleAnalytics } from "@/components/site/ConsoleAnalytics";
 import { ConsoleCampaigns } from "@/components/site/ConsoleCampaigns";
+import { ConsoleCollaborators } from "@/components/site/ConsoleCollaborators";
+import { ConsoleParticipants } from "@/components/site/ConsoleParticipants";
+import { ConsoleProgrammeSettings } from "@/components/site/ConsoleProgrammeSettings";
 import { ConsoleReviews } from "@/components/site/ConsoleReviews";
 import { ConsoleRevenue } from "@/components/site/ConsoleRevenue";
 import { ConsoleShop } from "@/components/site/ConsoleShop";
@@ -49,8 +53,8 @@ import {
 } from "@/lib/format";
 import type {
   BusinessBookingView,
+  ConsoleProgrammeView,
   GuestView,
-  ProgrammeListItem,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -73,6 +77,7 @@ import {
   LogOut,
   Megaphone,
   Plus,
+  Send,
   Trash2,
   TriangleAlert,
   Users,
@@ -699,6 +704,7 @@ function GuestsDialog({
 function AnnounceDialog({ event }: { event: ConsoleEvent }) {
   const post = useMutation(api.events.announce);
   const retract = useMutation(api.events.retract);
+  const broadcast = useMutation(api.events.broadcast);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -784,7 +790,36 @@ function AnnounceDialog({ event }: { event: ConsoleEvent }) {
                     </p>
                     <p className="mt-1.5 text-[11px] text-muted-foreground">
                       {relativeDay(note.at)}
+                      {note.emailedAt !== undefined && (
+                        <>
+                          <span className="px-1.5 text-border">·</span>
+                          emailed to {note.emailed}{" "}
+                          {note.emailed === 1 ? "guest" : "guests"}
+                        </>
+                      )}
                     </p>
+                    {note.emailedAt === undefined && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const result = await broadcast({
+                              id: event._id,
+                              at: note.at,
+                            });
+                            toast.success("Sent to the guest list", {
+                              description: `${result.recipients} emailed about \u201c${note.title}\u201d.`,
+                            });
+                          } catch (broadcastError) {
+                            toast.error(errorMessage(broadcastError));
+                          }
+                        }}
+                        className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-[11.5px] text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground"
+                      >
+                        <Send className="size-3" />
+                        Email the guest list
+                      </button>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -845,6 +880,40 @@ function AnnounceDialog({ event }: { event: ConsoleEvent }) {
             </Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Everything an organizer can change about a programme after publishing it. */
+function ProgrammeSettingsDialog({
+  programme,
+}: {
+  programme: ConsoleProgrammeView;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 gap-1.5 rounded-full px-3 text-[12px]"
+        >
+          <Cog className="size-3.5" />
+          Settings
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle className="text-[18px] tracking-[-0.02em]">
+            Programme settings
+          </DialogTitle>
+          <DialogDescription>
+            {programme.organization} · {programme.name}
+          </DialogDescription>
+        </DialogHeader>
+        <ConsoleProgrammeSettings key={programme._id} programme={programme} />
       </DialogContent>
     </Dialog>
   );
@@ -972,7 +1041,13 @@ type ConsoleEvent = {
   waitlisted: number;
   collected: number;
   outstanding: number;
-  announcements: { title: string; body: string; at: number }[];
+  announcements: {
+    title: string;
+    body: string;
+    at: number;
+    emailed?: number;
+    emailedAt?: number;
+  }[];
 };
 
 function ConsoleEventRow({ event }: { event: ConsoleEvent }) {
@@ -1052,35 +1127,38 @@ function StatBlock({ value, label }: { value: string; label: string }) {
   );
 }
 
+type AdminTab =
+  | "overview"
+  | "participants"
+  | "analytics"
+  | "team"
+  | "revenue"
+  | "campaigns"
+  | "shop"
+  | "sponsors"
+  | "reviews"
+  | "programmes";
+
 export default function Admin() {
   useEnsureSeeded();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const programmes = useQuery(api.fests.mine);
+  // `console` rather than `mine`: it includes the programmes this account was
+  // invited onto, each with its own settings and the caller's role.
+  const programmes = useQuery(api.fests.console) as
+    | ConsoleProgrammeView[]
+    | undefined;
   const events = useQuery(api.events.organized);
   const bookings = useQuery(api.registrations.forBusiness);
-  const [tab, setTab] = useState<
-    | "overview"
-    | "revenue"
-    | "campaigns"
-    | "shop"
-    | "sponsors"
-    | "reviews"
-    | "programmes"
-  >("overview");
+  const [tab, setTab] = useState<AdminTab>("overview");
   // The shop hangs off one event at a time, so this tab keeps its own choice.
   const [shopEventId, setShopEventId] = useState<Id<"events"> | null>(null);
+  // Collaboration is settled one programme at a time as well.
+  const [teamFestId, setTeamFestId] = useState<Id<"fests"> | null>(null);
+  const activeTeamFestId =
+    teamFestId ?? programmes?.[0]?._id ?? null;
 
-  const tabClass = (
-    value:
-      | "overview"
-      | "revenue"
-      | "campaigns"
-      | "shop"
-      | "sponsors"
-      | "reviews"
-      | "programmes",
-  ) =>
+  const tabClass = (value: AdminTab) =>
     cn(
       "h-full rounded-full px-4 text-[13px] transition-[background-color,color,box-shadow] duration-200 ease-soft",
       tab === value
@@ -1164,23 +1242,27 @@ export default function Admin() {
 
           <Tabs
             value={tab}
-            onValueChange={(value) =>
-              setTab(
-                value as
-                  | "overview"
-                  | "revenue"
-                  | "campaigns"
-                  | "shop"
-                  | "sponsors"
-                  | "reviews"
-                  | "programmes",
-              )
-            }
+            onValueChange={(value) => setTab(value as AdminTab)}
             className="mt-10 gap-0"
           >
             <TabsList className="h-auto flex-wrap rounded-full border border-border bg-transparent p-1">
               <TabsTrigger value="overview" className={tabClass("overview")}>
                 Overview
+              </TabsTrigger>
+              <TabsTrigger
+                value="participants"
+                className={tabClass("participants")}
+              >
+                Participants
+              </TabsTrigger>
+              <TabsTrigger
+                value="analytics"
+                className={tabClass("analytics")}
+              >
+                Analytics
+              </TabsTrigger>
+              <TabsTrigger value="team" className={tabClass("team")}>
+                Collaboration
               </TabsTrigger>
               <TabsTrigger value="revenue" className={tabClass("revenue")}>
                 Revenue
@@ -1363,7 +1445,7 @@ export default function Admin() {
                 </div>
               ) : (
                 <div className="mt-10 space-y-8">
-                  {programmes.map((programme: ProgrammeListItem) => (
+                  {programmes.map((programme) => (
                     <section
                       key={programme._id}
                       className="overflow-hidden rounded-lg border border-border bg-card"
@@ -1388,13 +1470,49 @@ export default function Admin() {
                             {programme.seatsTaken}/{programme.capacity} places
                             booked
                           </p>
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <span
+                              className={cn(
+                                "chip",
+                                programme.isOwner
+                                  ? "chip-tinted border-brand-line text-foreground"
+                                  : "",
+                              )}
+                            >
+                              {programme.isOwner
+                                ? "Owner"
+                                : `You are ${programme.role}`}
+                            </span>
+                            <span className="chip">
+                              {programme.cancellationFee === 0
+                                ? "Free to release, any time"
+                                : `${formatMoney(programme.cancellationFee)} fee after ${programme.cancellationWindowHours}h`}
+                            </span>
+                            <span className="chip">
+                              {programme.teamSize === 0
+                                ? "No collaborators"
+                                : `${programme.teamSize} collaborator${programme.teamSize === 1 ? "" : "s"}`}
+                              {programme.pendingInvites > 0 &&
+                                ` · ${programme.pendingInvites} waiting`}
+                            </span>
+                            <span className="chip">
+                              {programme.emailTemplate === null
+                                ? "Product email wording"
+                                : "Your own email wording"}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <AddEventDialog festId={programme._id} />
-                          <DeleteProgrammeButton
-                            festId={programme._id}
-                            name={programme.name}
-                          />
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <ProgrammeSettingsDialog programme={programme} />
+                          {programme.canEdit && (
+                            <AddEventDialog festId={programme._id} />
+                          )}
+                          {programme.isOwner && (
+                            <DeleteProgrammeButton
+                              festId={programme._id}
+                              name={programme.name}
+                            />
+                          )}
                         </div>
                       </div>
 
@@ -1412,6 +1530,77 @@ export default function Admin() {
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent
+              value="participants"
+              className="animate-rise mt-10"
+            >
+              <div className="max-w-2xl">
+                <p className="label-eyebrow">Participants</p>
+                <p className="mt-3 text-[13px] leading-6 text-muted-foreground">
+                  Every booking across every programme you run or help run, in
+                  one place. Search it, filter it by category, decide on a place
+                  and mark people in at the door — a decision emails the
+                  participant the moment you save it.
+                </p>
+              </div>
+              <div className="mt-8">
+                <ConsoleParticipants />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="analytics" className="animate-rise mt-10">
+              <div className="max-w-2xl">
+                <p className="label-eyebrow">Analytics</p>
+                <p className="mt-3 text-[13px] leading-6 text-muted-foreground">
+                  How the season is going: places taken against capacity, where
+                  the bookings came from, who is on the guest list and what is
+                  waiting on a decision.
+                </p>
+              </div>
+              <div className="mt-8">
+                <ConsoleAnalytics />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="team" className="animate-rise mt-10">
+              <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+                <div className="max-w-2xl">
+                  <p className="label-eyebrow">Collaboration</p>
+                  <p className="mt-3 text-[13px] leading-6 text-muted-foreground">
+                    Invite someone to help run a programme, choose what they may
+                    do, and end their access whenever you like.
+                  </p>
+                </div>
+                {(programmes ?? []).length > 0 && (
+                  <Select
+                    value={activeTeamFestId ?? ""}
+                    onValueChange={(value) =>
+                      setTeamFestId(value as Id<"fests">)
+                    }
+                  >
+                    <SelectTrigger className="h-9 w-[16rem] bg-background shadow-none">
+                      <SelectValue placeholder="Pick a programme" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(programmes ?? []).map((programme) => (
+                        <SelectItem key={programme._id} value={programme._id}>
+                          {programme.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <ConsoleCollaborators
+                festId={activeTeamFestId}
+                programmeName={
+                  (programmes ?? []).find(
+                    (programme) => programme._id === activeTeamFestId,
+                  )?.name ?? null
+                }
+              />
             </TabsContent>
 
             <TabsContent value="revenue" className="animate-rise mt-10">

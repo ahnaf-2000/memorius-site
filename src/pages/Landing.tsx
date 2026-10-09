@@ -62,6 +62,7 @@ import {
   Globe,
   Handshake,
   Layers3,
+  Megaphone,
   MessageSquare,
   Printer,
   ShoppingBag,
@@ -69,6 +70,7 @@ import {
   Star,
   Ticket,
   TrendingUp,
+  UserCheck,
   Zap,
 } from "lucide-react";
 import {
@@ -643,6 +645,137 @@ function NextEventCard({ events }: { events: EventListItem[] }) {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The two reasons an organizer asks for first.
+ *
+ * The wall below lists 102 things the product does, and every square is a
+ * promise. These two are the newest and the ones the people running the day
+ * asked for most, so they get more than one inch: the wall's 101st and 102nd
+ * squares, explained where they can be read.
+ */
+function OrganizerSpotlight() {
+  const reduced = useReducedMotion();
+  const cards = [
+    {
+      number: "101",
+      icon: <UserCheck className="size-5" />,
+      title: "A door roster that counts",
+      copy: "Mark a guest in as they arrive and the roster records the time and who marked them. Check someone in twice by accident and the desk undoes it. The attendance rate on the analytics panel stops being a guess.",
+      points: [
+        "Search the guest list by name, address or reference",
+        "Check in from the Participants tab, on a phone at the door",
+        "Attendance and late releases counted per event",
+      ],
+      to: "/admin",
+      cta: "Open the console",
+    },
+    {
+      number: "102",
+      icon: <Megaphone className="size-5" />,
+      title: "News that reaches the guests",
+      copy: "A room change belongs on the event page and in the inbox of everyone holding a place. Post it once, email it once — the announcement remembers it went, so nobody is told the same news twice.",
+      points: [
+        "Announcements appear on the event page the moment you post",
+        "One press emails everyone confirmed or waiting",
+        "The count of who was told is kept beside the announcement",
+      ],
+      to: "/admin",
+      cta: "See the announcement tools",
+    },
+  ];
+
+  return (
+    <section
+      id="for-organizers"
+      className="relative scroll-mt-24 overflow-hidden border-t border-border"
+    >
+      <div
+        aria-hidden="true"
+        className="grid-veil pointer-events-none absolute inset-x-0 top-0 h-64"
+      />
+      <div className="relative mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <div className="max-w-2xl">
+            <span className="label-eyebrow text-warm">
+              For the people running the day
+            </span>
+            <h2 className="font-display mt-5 text-[24px] leading-[1.18] font-light tracking-[-0.016em] text-balance sm:text-[30px]">
+              The 101st and 102nd reasons are both about the desk.
+            </h2>
+            <p className="mt-3 text-[14px] leading-7 text-muted-foreground">
+              Everything on the wall below is real today. These two arrived
+              last, because an organizer asked for them: who actually turned up,
+              and how to tell everyone when something changes.
+            </p>
+          </div>
+          <Button
+            asChild
+            variant="outline"
+            className="h-10 rounded-full border-border px-5 text-[13px] shadow-none"
+          >
+            <Link to="/admin">
+              Open the organizer console
+              <ArrowRight className="size-3.5" />
+            </Link>
+          </Button>
+        </div>
+
+        <div className="mt-12 grid gap-5 lg:grid-cols-2">
+          {cards.map((card) => (
+            <motion.article
+              key={card.number}
+              initial={reduced === true ? undefined : { opacity: 0, y: 18 }}
+              whileInView={reduced === true ? undefined : { opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.6, ease: EASE }}
+              className="group relative overflow-hidden rounded-lg border border-border bg-card p-6 transition-[border-color,box-shadow] duration-500 ease-soft hover:border-foreground/15 hover:shadow-lift sm:p-7"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <span className="icon-chip icon-chip-warm size-11">
+                  {card.icon}
+                </span>
+                <span className="font-display text-[26px] leading-none tabular-nums text-muted-foreground/60">
+                  {card.number}
+                </span>
+              </div>
+              <h3 className="mt-6 text-[19px] leading-[1.25] font-medium tracking-[-0.02em] text-balance">
+                {card.title}
+              </h3>
+              <p className="mt-3 text-[13.5px] leading-7 text-muted-foreground">
+                {card.copy}
+              </p>
+              <ul className="mt-5 space-y-2.5 border-t border-border pt-5">
+                {card.points.map((point) => (
+                  <li
+                    key={point}
+                    className="flex items-start gap-2.5 text-[12.5px] leading-6 text-muted-foreground"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="mt-2 size-1.5 shrink-0 rounded-full bg-warm"
+                    />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                asChild
+                variant="ghost"
+                className="mt-6 h-9 gap-2 rounded-full px-4 text-[13px]"
+              >
+                <Link to={card.to}>
+                  {card.cta}
+                  <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              </Button>
+            </motion.article>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -2376,6 +2509,9 @@ export default function Landing() {
         </section>
         {/* The report, at the foot of the page */}
         <ReportBand />
+
+        {/* The hundred and first and second reasons, told at length. */}
+        <OrganizerSpotlight />
 
         {/* The hundred reasons: the last word before the footer. */}
         <FeatureGrid />

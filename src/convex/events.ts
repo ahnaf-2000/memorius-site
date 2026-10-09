@@ -1,6 +1,14 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { publicBooking, publicEvent, requireUserId, uniqueSlug } from "./model";
+import {
+  programmeAccess,
+  publicBooking,
+  publicEvent,
+  requireUserId,
+  uniqueSlug,
+} from "./model";
+import { internal } from "./_generated/api";
+import { appUrl } from "./notifications";
 import { normalizeCategory, normalizeEligibility } from "./taxonomy";
 
 const formatValidator = v.union(
@@ -84,7 +92,7 @@ export const getBySlug = query({
     ).length;
 
     return {
-      event: publicEvent(event, now),
+      event: publicEvent(event, now, fest),
       fest:
         fest === null
           ? null
@@ -134,7 +142,7 @@ export const organized = query({
               .collect();
             const live = bookings.filter((row) => row.status !== "cancelled");
             return {
-              ...publicEvent(event, now),
+              ...publicEvent(event, now, fest),
               festName: fest.name,
               festSlug: fest.slug,
               confirmed: live.filter((row) => row.status === "confirmed").length,
@@ -171,14 +179,13 @@ export const create = mutation({
     chiefGuest: v.optional(v.string()),
     specialGuests: v.optional(v.array(v.string())),
     organizerNotes: v.optional(v.string()),
+    cancellationFee: v.optional(v.number()),
+    cancellationWindowHours: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await requireUserId(ctx);
-    const fest = await ctx.db.get(args.festId);
-    if (fest === null) throw new Error("That programme no longer exists.");
-    if (fest.ownerId !== userId) {
-      throw new Error("Only the owning account can add events here.");
-    }
+    // An editor is exactly whoever may put an event on the programme: the owner
+    // and the collaborators the owner trusted with it.
+    await programmeAccess(ctx, args.festId, "editor");
     if (args.endTime < args.startTime) {
       throw new Error("The end time has to come after the start time.");
     }
@@ -204,6 +211,14 @@ export const create = mutation({
       chiefGuest: args.chiefGuest?.trim() || undefined,
       specialGuests: cleanGuests(args.specialGuests),
       organizerNotes: args.organizerNotes?.trim() || undefined,
+      cancellationFee:
+        args.cancellationFee === undefined
+          ? undefined
+          : Math.max(0, Math.round(args.cancellationFee)),
+      cancellationWindowHours:
+        args.cancellationWindowHours === undefined
+          ? undefined
+          : Math.min(720, Math.max(0, Math.round(args.cancellationWindowHours))),
       createdAt: Date.now(),
     });
     return { id, slug };
@@ -228,14 +243,16 @@ export const update = mutation({
     chiefGuest: v.optional(v.string()),
     specialGuests: v.optional(v.array(v.string())),
     organizerNotes: v.optional(v.string()),
+    /** A cancellation policy for this event alone, overriding the programme. */
+    cancellationFee: v.optional(v.number()),
+    cancellationWindowHours: v.optional(v.number()),
   },
   handler: async (ctx, { id, ...patch }) => {
-    const userId = await requireUserId(ctx);
     const event = await ctx.db.get(id);
     if (event === null) throw new Error("That event no longer exists.");
-    const fest = await ctx.db.get(event.festId);
-    if (fest === null || fest.ownerId !== userId) {
-      throw new Error("Only the owning account can edit this event.");
+    await programmeAccess(ctx, event.festId, "editor");
+    if (patch.endTime !== undefined && patch.startTime !== undefined && patch.endTime < patch.startTime) {
+      throw new Error("The end time has to come after the start time.");
     }
     await ctx.db.patch(id, {
       ...(patch.title !== undefined ? { title: patch.title.trim() } : {}),
@@ -273,6 +290,17 @@ export const update = mutation({
       ...(patch.organizerNotes !== undefined
         ? { organizerNotes: patch.organizerNotes.trim() || undefined }
         : {}),
+      ...(patch.cancellationFee !== undefined
+        ? { cancellationFee: Math.max(0, Math.round(patch.cancellationFee)) }
+        : {}),
+      ...(patch.cancellationWindowHours !== undefined
+        ? {
+            cancellationWindowHours: Math.min(
+              720,
+              Math.max(0, Math.round(patch.cancellationWindowHours)),
+            ),
+          }
+        : {}),
     });
     return { slug: event.slug };
   },
@@ -290,13 +318,9 @@ export const update = mutation({
 export const announce = mutation({
   args: { id: v.id("events"), title: v.string(), body: v.string() },
   handler: async (ctx, { id, title, body }) => {
-    const userId = await requireUserId(ctx);
     const event = await ctx.db.get(id);
     if (event === null) throw new Error("That event no longer exists.");
-    const fest = await ctx.db.get(event.festId);
-    if (fest === null || fest.ownerId !== userId) {
-      throw new Error("Only the owning account can post an announcement.");
-    }
+    await programmeAccess(ctx, event.festId, "editor");
 
     const cleanTitle = title.trim().slice(0, 120);
     const cleanBody = body.trim().slice(0, 1200);
@@ -323,13 +347,9 @@ export const announce = mutation({
 export const retract = mutation({
   args: { id: v.id("events"), at: v.number() },
   handler: async (ctx, { id, at }) => {
-    const userId = await requireUserId(ctx);
     const event = await ctx.db.get(id);
     if (event === null) throw new Error("That event no longer exists.");
-    const fest = await ctx.db.get(event.festId);
-    if (fest === null || fest.ownerId !== userId) {
-      throw new Error("Only the owning account can retract an announcement.");
-    }
+    await programmeAccess(ctx, event.festId, "editor");
 
     const announcements = (event.announcements ?? []).filter(
       (note) => note.at !== at,
@@ -339,17 +359,75 @@ export const retract = mutation({
   },
 });
 
+/**
+ * Send one announcement to everyone holding a place.
+ *
+ * The announcement is already on the event page; this is the organizer saying
+ * it out loud as well. It is stamped when it goes out, so nobody is emailed the
+ * same news twice — a second attempt is refused rather than repeated. The send
+ * is capped at two hundred guests per announcement: past that, a season needs a
+ * mailing list rather than a button.
+ */
+export const broadcast = mutation({
+  args: { id: v.id("events"), at: v.number() },
+  handler: async (ctx, { id, at }) => {
+    const event = await ctx.db.get(id);
+    if (event === null) throw new Error("That event no longer exists.");
+    const access = await programmeAccess(ctx, event.festId, "editor");
+
+    const note = (event.announcements ?? []).find((row) => row.at === at);
+    if (note === undefined) {
+      throw new Error("That announcement is no longer on the event.");
+    }
+    if (note.emailedAt !== undefined) {
+      throw new Error("That announcement has already been emailed.");
+    }
+
+    const rows = await ctx.db
+      .query("registrations")
+      .withIndex("by_event", (q) => q.eq("eventId", id))
+      .collect();
+    const recipients = rows.filter(
+      (row) => row.status === "confirmed" || row.status === "waitlisted",
+    );
+    if (recipients.length === 0) {
+      throw new Error("Nobody holds a place yet, so there is nobody to tell.");
+    }
+
+    const sentAt = Date.now();
+    const reach = Math.min(recipients.length, 200);
+    await ctx.db.patch(id, {
+      announcements: (event.announcements ?? []).map((row) =>
+        row.at === at ? { ...row, emailed: reach, emailedAt: sentAt } : row,
+      ),
+    });
+
+    for (const recipient of recipients.slice(0, 200)) {
+      await ctx.scheduler.runAfter(0, internal.mail.sendAnnouncementBroadcast, {
+        to: recipient.email,
+        fullName: recipient.fullName,
+        reference: recipient.reference,
+        eventTitle: event.title,
+        title: note.title,
+        body: note.body,
+        organization: access.fest.organization,
+        programmeName: access.fest.name,
+        eventUrl: `${appUrl()}/events/${event.slug}`,
+      });
+    }
+
+    return { recipients: reach, skipped: recipients.length - reach };
+  },
+});
+
 /** Remove an event, its bookings and its discussion. */
 export const remove = mutation({
   args: { id: v.id("events") },
   handler: async (ctx, { id }) => {
-    const userId = await requireUserId(ctx);
     const event = await ctx.db.get(id);
     if (event === null) return { removed: false };
-    const fest = await ctx.db.get(event.festId);
-    if (fest === null || fest.ownerId !== userId) {
-      throw new Error("Only the owning account can delete this event.");
-    }
+    // Deleting takes the bookings with it, so it needs a manager.
+    await programmeAccess(ctx, event.festId, "manager");
     const bookings = await ctx.db
       .query("registrations")
       .withIndex("by_event", (q) => q.eq("eventId", id))

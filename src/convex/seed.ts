@@ -6,7 +6,7 @@ import { mutation } from "./_generated/server";
  * behind by an earlier version — and only showcase data, never a programme a
  * business created itself.
  */
-const SHOWCASE_VERSION = 6;
+const SHOWCASE_VERSION = 7;
 
 /** What is on sale at every seeded event: merchandise to keep, snacks for the day. */
 const SHOP_STOCK = [
@@ -451,6 +451,10 @@ export const ensureSeeded = mutation({
         venue: "Meridian House, 42 Finsbury Square",
         startDate: new Date(2026, 10, 12, 9, 0).getTime(),
         endDate: new Date(2026, 10, 15, 22, 30).getTime(),
+        // A policy the showcase can be read against: two days' notice is free,
+        // and a place released after that records $25 against the booking.
+        cancellationFee: 2500,
+        cancellationWindowHours: 48,
         events: [
           {
             title: "Supply Chain Resilience Forum",

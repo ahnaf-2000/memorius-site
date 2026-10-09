@@ -23,7 +23,33 @@ export type ProductKind = "merchandise" | "snack";
 export type OrderStatus = "placed" | "ready" | "collected" | "cancelled";
 export type SponsorshipTier = "community" | "silver" | "gold" | "lead";
 export type SponsorshipStatus = "pledged" | "confirmed" | "paid";
-export type BookingStatus = "confirmed" | "waitlisted" | "cancelled";
+export type BookingStatus =
+  | "confirmed"
+  | "waitlisted"
+  | "cancelled"
+  | "declined";
+
+/** Who a participant is on the guest list, as the organizer can filter on. */
+export type ParticipantCategory =
+  | "delegate"
+  | "student"
+  | "speaker"
+  | "press"
+  | "volunteer"
+  | "guest"
+  | "staff";
+
+/** What a collaborator may do on someone else's programme. */
+export type CollaboratorRole = "manager" | "editor" | "viewer";
+export type CollaboratorStatus = "invited" | "active" | "revoked";
+
+/** The wording an organizer may rewrite on the post-booking email. */
+export interface EmailTemplateView {
+  subject?: string;
+  heading?: string;
+  intro?: string;
+  closing?: string;
+}
 
 export interface EventView {
   _id: Id<"events">;
@@ -52,7 +78,18 @@ export interface EventView {
   /** The organizer's own note, printed as None when they left none. */
   organizerNotes: string | null;
   /** Newest first, as the organizer published them. */
-  announcements: { title: string; body: string; at: number }[];
+  announcements: {
+    title: string;
+    body: string;
+    at: number;
+    emailed?: number;
+    emailedAt?: number;
+  }[];
+  /** Minor units charged when a place is released after the free window. */
+  cancellationFee: number;
+  cancellationWindowHours: number;
+  /** When releasing a place stops being free, or null when it always is. */
+  freeCancellationUntil: number | null;
   state: SeatState;
   stateLabel: string;
   accepting: boolean;
@@ -90,6 +127,11 @@ export interface ProgrammeListItem extends ProgrammeView {
 
 export interface BookingView {
   _id: Id<"registrations">;
+  participantCategory: ParticipantCategory | null;
+  decidedAt: number | null;
+  decisionNote: string | null;
+  cancellationFee: number | null;
+  checkedInAt: number | null;
   status: BookingStatus;
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod | null;
@@ -108,6 +150,11 @@ export interface BookingView {
 
 export interface GuestView {
   _id: Id<"registrations">;
+  participantCategory: ParticipantCategory | null;
+  decidedAt: number | null;
+  decisionNote: string | null;
+  cancellationFee: number | null;
+  checkedInAt: number | null;
   fullName: string;
   email: string;
   phone: string | null;
@@ -127,8 +174,122 @@ export interface BusinessBookingView extends GuestView {
   eventTitle: string;
   eventSlug: string;
   eventStart: number;
+  eventId: Id<"events">;
+  festId: Id<"fests">;
+  eventCategory: string;
+  /** Whether this account may decide on the booking, or only read it. */
+  canDecide: boolean;
   price: number;
   programmeName: string;
+}
+
+/** One day of the booking chart. */
+export interface BookingDayPoint {
+  at: number;
+  count: number;
+}
+
+export interface AnalyticsEventRow {
+  eventId: Id<"events">;
+  festId: Id<"fests">;
+  title: string;
+  slug: string;
+  category: string;
+  startTime: number;
+  capacity: number;
+  seatsTaken: number;
+  remaining: number;
+  confirmed: number;
+  waitlisted: number;
+  declined: number;
+  cancelled: number;
+  checkedIn: number;
+  lateReleases: number;
+  releaseFeeRecorded: number;
+  bookings: number;
+  fill: number;
+  upcoming: boolean;
+  announcements: number;
+}
+
+/** Everything the organizer analytics panel draws. */
+export interface AnalyticsOverview {
+  totals: {
+    programmes: number;
+    events: number;
+    upcoming: number;
+    bookings: number;
+    confirmed: number;
+    waitlisted: number;
+    declined: number;
+    cancelled: number;
+    checkedIn: number;
+    capacity: number;
+    seatsTaken: number;
+    fill: number;
+    releaseRate: number;
+    attendanceRate: number;
+    awaitingDecision: number;
+    announcements: number;
+    emailedAnnouncements: number;
+  };
+  series: BookingDayPoint[];
+  byProgramme: {
+    festId: Id<"fests">;
+    name: string;
+    organization: string;
+    slug: string;
+    events: number;
+    seatsTaken: number;
+    capacity: number;
+    bookings: number;
+    fill: number;
+  }[];
+  byCategory: {
+    category: string;
+    events: number;
+    seatsTaken: number;
+    capacity: number;
+  }[];
+  byParticipantCategory: { category: string; count: number }[];
+  events: AnalyticsEventRow[];
+  busiest: AnalyticsEventRow | null;
+  programmes: { _id: Id<"fests">; name: string; organization: string }[];
+}
+
+/** A programme as the console sees it, with its settings and the caller's role. */
+export interface ConsoleProgrammeView extends ProgrammeListItem {
+  role: "owner" | CollaboratorRole;
+  isOwner: boolean;
+  canEdit: boolean;
+  cancellationFee: number;
+  cancellationWindowHours: number;
+  emailTemplate: EmailTemplateView | null;
+  teamSize: number;
+  pendingInvites: number;
+}
+
+/** One row of the collaboration table. */
+export interface CollaboratorView {
+  _id: Id<"collaborators">;
+  email: string;
+  name: string | null;
+  role: CollaboratorRole;
+  status: CollaboratorStatus;
+  invitedAt: number;
+  respondedAt: number | null;
+}
+
+/** An invitation waiting for the signed-in account. */
+export interface InviteView {
+  _id: Id<"collaborators">;
+  festId: Id<"fests">;
+  role: CollaboratorRole;
+  invitedAt: number;
+  programmeName: string;
+  programmeSlug: string;
+  organization: string;
+  invitedByName: string;
 }
 
 export interface ProductView {

@@ -43,6 +43,7 @@ import {
   Mail,
   MailCheck,
   MapPin,
+  Megaphone,
   MessagesSquare,
   Moon,
   MousePointerClick,
@@ -831,6 +832,22 @@ export const FEATURES: Feature[] = [
       "Headings, regions and labels are structured, so a screen reader can navigate by section.",
     tone: "craft",
     icon: ListChecks,
+  },
+
+  // ---- The hundred and first and second, for the people running the day ----
+  {
+    label: "A door roster",
+    detail:
+      "Mark a guest in as they arrive — with the time and who marked them — and the attendance rate finally means something.",
+    tone: "programmes",
+    icon: UserCheck,
+  },
+  {
+    label: "News to guests",
+    detail:
+      "An announcement posted on the event can be emailed to everyone holding a place, once, and it remembers that it went.",
+    tone: "programmes",
+    icon: Megaphone,
   },
 ];
 

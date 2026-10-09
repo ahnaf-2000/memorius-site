@@ -21,6 +21,7 @@ import { useEnsureSeeded } from "@/hooks/use-seed";
 import {
   dayParts,
   errorMessage,
+  formatLongDate,
   formatMoney,
   formatTimeRange,
   initials,
@@ -43,6 +44,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
+import type { ParticipantCategory } from "@/lib/types";
 
 interface BookingEvent {
   _id: Id<"events">;
@@ -52,11 +54,20 @@ interface BookingEvent {
   startTime: number;
   endTime: number;
   price: number;
+  /** The policy the customer agreed to when they took the place. */
+  cancellationFee: number;
+  cancellationWindowHours: number;
+  freeCancellationUntil: number | null;
 }
 
 interface BookingRow {
   _id: Id<"registrations">;
-  status: "confirmed" | "waitlisted" | "cancelled";
+  status: "confirmed" | "waitlisted" | "cancelled" | "declined";
+  participantCategory: ParticipantCategory | null;
+  cancellationFee: number | null;
+  checkedInAt: number | null;
+  decidedAt: number | null;
+  decisionNote: string | null;
   paymentStatus: "paid" | "due" | "waived";
   amountPaid: number;
   reference: string;
@@ -69,12 +80,25 @@ const STATUS_LABEL: Record<BookingRow["status"], string> = {
   confirmed: "Confirmed",
   waitlisted: "Waiting list",
   cancelled: "Released",
+  declined: "Not confirmed",
 };
 
 const STATUS_TONE: Record<BookingRow["status"], string> = {
   confirmed: "tone-open",
   waitlisted: "tone-few",
   cancelled: "tone-muted",
+  declined: "tone-muted",
+};
+
+/** What the customer called themselves when they booked. */
+const CATEGORY_LABEL: Record<ParticipantCategory, string> = {
+  delegate: "Delegate",
+  student: "Student",
+  speaker: "Speaker",
+  press: "Press",
+  volunteer: "Volunteer",
+  guest: "Guest",
+  staff: "Staff",
 };
 
 const PERSONA_COPY: Record<
@@ -118,6 +142,12 @@ function BookingCard({ booking }: { booking: BookingRow }) {
 
   const released = booking.status === "cancelled";
   const parts = dayParts(event.startTime);
+  // What releasing the place would cost if it were done right now. The policy
+  // is quoted from the event, and the moment it stops being free is decided by
+  // the server, not by this screen's clock.
+  const late = event.freeCancellationUntil !== null && Date.now() > event.freeCancellationUntil;
+  const feeNow = late ? event.cancellationFee : 0;
+  const feeCharged = booking.cancellationFee ?? 0;
 
   return (
     <div className="group row-marker relative grid grid-cols-[auto_1fr] items-start gap-5 border-b border-border py-5 pr-1 pl-1 transition-colors duration-300 ease-soft hover:bg-accent/40 sm:grid-cols-[auto_1fr_auto] sm:gap-7">
@@ -169,7 +199,27 @@ function BookingCard({ booking }: { booking: BookingRow }) {
           <span className="font-display text-[12px] tracking-[0.05em] text-muted-foreground">
             {booking.reference}
           </span>
+          <span className="text-[11px] tracking-[0.08em] text-muted-foreground uppercase">
+            {CATEGORY_LABEL[booking.participantCategory ?? "guest"]}
+          </span>
+          {booking.checkedInAt !== null && (
+            <span className="flex items-center gap-2 text-[11px] tracking-[0.08em] text-foreground uppercase">
+              <Dot className="tone-open" />
+              Checked in
+            </span>
+          )}
+          {booking.cancellationFee !== null && booking.cancellationFee > 0 && (
+            <span className="text-[11px] tracking-[0.08em] text-muted-foreground uppercase tabular-nums">
+              {formatMoney(booking.cancellationFee)} cancellation fee
+            </span>
+          )}
         </div>
+
+        {booking.decisionNote !== null && (
+          <p className="mt-3 max-w-xl rounded-md border border-dashed border-border px-3.5 py-2.5 text-[12.5px] leading-6 text-muted-foreground">
+            From the organizer: {booking.decisionNote}
+          </p>
+        )}
       </div>
 
       <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:justify-end">
@@ -202,8 +252,7 @@ function BookingCard({ booking }: { booking: BookingRow }) {
               >
                 Cancel
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
+            </AlertDialogTrigger>              <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Cancel this booking?</AlertDialogTitle>
                 <AlertDialogDescription>
@@ -211,19 +260,44 @@ function BookingCard({ booking }: { booking: BookingRow }) {
                   list. You can book again while places remain.
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              {feeNow > 0 ? (
+                <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3.5 py-2.5 text-[12.5px] leading-6 text-destructive">
+                  This is a late release: {formatMoney(feeNow)} is recorded
+                  against {booking.reference}. Releasing was free until{" "}
+                  {event.freeCancellationUntil === null
+                    ? "the event started"
+                    : formatLongDate(event.freeCancellationUntil)}{" "}
+                  — {event.cancellationWindowHours} hours before the start.
+                </p>
+              ) : event.cancellationFee > 0 ? (
+                <p className="rounded-md border border-border px-3.5 py-2.5 text-[12.5px] leading-6 text-muted-foreground">
+                  Nothing is charged: releasing a place is free until{" "}
+                  {event.freeCancellationUntil === null
+                    ? "the event starts"
+                    : formatLongDate(event.freeCancellationUntil)}{" "}
+                  ({event.cancellationWindowHours} hours before the start).
+                </p>
+              ) : null}
               <AlertDialogFooter>
                 <AlertDialogCancel>Keep booking</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={async () => {
                     try {
-                      await cancelBooking({ registrationId: booking._id });
-                      toast.success("Booking cancelled");
+                      const result = await cancelBooking({
+                        registrationId: booking._id,
+                      });
+                      toast.success("Place released", {
+                        description:
+                          result.fee > 0
+                            ? `${formatMoney(result.fee)} is recorded as a cancellation fee on ${booking.reference}.`
+                            : "Nothing was charged.",
+                      });
                     } catch (error) {
                       toast.error(errorMessage(error));
                     }
                   }}
                 >
-                  Cancel booking
+                  {feeNow > 0 ? "Release and accept the fee" : "Release the place"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

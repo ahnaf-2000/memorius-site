@@ -36,7 +36,13 @@ import {
   relativeDay,
   seatSummary,
 } from "@/lib/format";
+import {
+  DEFAULT_PARTICIPANT_CATEGORY,
+  PARTICIPANT_CATEGORIES,
+  PARTICIPANT_CATEGORY_LABEL,
+} from "@/lib/categories";
 import { award } from "@/lib/keepsakes";
+import { cn } from "@/lib/utils";
 import type { CommentView, EventView } from "@/lib/types";
 import { useMutation, useQuery } from "convex/react";
 import { formatDistanceToNowStrict } from "date-fns";
@@ -151,6 +157,9 @@ function BookingPanel({
     phone: "",
     organization: user?.company ?? "",
     notes: "",
+    // Who they are on the guest list. A delegate unless they say otherwise,
+    // and correctable by the desk at any time afterwards.
+    participantCategory: DEFAULT_PARTICIPANT_CATEGORY as string,
   });
   const [edited, setEdited] = useState<Record<string, boolean>>({});
   const [step, setStep] = useState<"details" | "checkout">("details");
@@ -440,6 +449,38 @@ function BookingPanel({
             placeholder="Optional"
           />
           <div className="space-y-2">
+            <Label className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
+              I am attending as
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {PARTICIPANT_CATEGORIES.map((category) => {
+                const on = form.participantCategory === category;
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() =>
+                      update("participantCategory")(category as string)
+                    }
+                    aria-pressed={on}
+                    title={PARTICIPANT_CATEGORY_LABEL[category].blurb}
+                    className={cn(
+                      "chip",
+                      on ? "chip-tinted border-brand-line text-foreground" : "",
+                    )}
+                  >
+                    {PARTICIPANT_CATEGORY_LABEL[category].name}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] leading-5 text-muted-foreground">
+              {PARTICIPANT_CATEGORY_LABEL[form.participantCategory as keyof typeof PARTICIPANT_CATEGORY_LABEL]
+                ?.blurb ?? ""}
+            </p>
+          </div>
+
+          <div className="space-y-2">
             <Label
               htmlFor="notes"
               className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase"
@@ -499,6 +540,14 @@ function BookingPanel({
               value={formatTimeRange(event.startTime, event.endTime)}
             />
             <SummaryRow label="Attendee" value={fullName} />
+            <SummaryRow
+              label="Guest list category"
+              value={
+                PARTICIPANT_CATEGORY_LABEL[
+                  form.participantCategory as keyof typeof PARTICIPANT_CATEGORY_LABEL
+                ]?.name ?? "Delegate"
+              }
+            />
             <div className="border-t border-border pt-3">
               <SummaryRow
                 label="Price per place"
@@ -509,7 +558,15 @@ function BookingPanel({
 
           <p className="rounded-md border border-border bg-background px-4 py-3 text-[12px] leading-5 text-muted-foreground">
             Every place is free of charge. Nothing is collected here — confirm
-            and your reference is issued straight away.
+            and your reference is issued straight away. The confirmation, with
+            the invoice attached, is emailed to you as soon as the place is
+            held.
+          </p>
+
+          <p className="rounded-md border border-dashed border-border bg-background px-4 py-3 text-[12px] leading-5 text-muted-foreground">
+            {event.cancellationFee === 0
+              ? `Releasing your place is free at any time, up to ${event.cancellationWindowHours} hours before the event starts.`
+              : `Free to release until ${event.cancellationWindowHours} hours before the start${event.freeCancellationUntil === null ? "" : ` (${formatLongDate(event.freeCancellationUntil)})`}; after that ${formatMoney(event.cancellationFee)} is recorded as a cancellation fee.`}
           </p>
 
           {error !== null && (
@@ -955,6 +1012,13 @@ export default function EventDetail() {
                       value: event.organizerNotes ?? "None",
                     },
                     { label: "Category", value: event.category },
+                    {
+                      label: "Releasing your place",
+                      value:
+                        event.cancellationFee === 0
+                          ? "Free at any time"
+                          : `Free until ${event.cancellationWindowHours} hours before the start, then ${formatMoney(event.cancellationFee)}`,
+                    },
                   ].map((row) => (
                     <div
                       key={row.label}

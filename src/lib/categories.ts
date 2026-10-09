@@ -7,14 +7,19 @@
  */
 export {
   CATEGORY_BLURB,
+  DEFAULT_PARTICIPANT_CATEGORY,
   ELIGIBILITY_LEVELS,
   EVENT_CATEGORIES,
   OPEN_CATEGORY,
   OPEN_ELIGIBILITY,
+  PARTICIPANT_CATEGORIES,
+  PARTICIPANT_CATEGORY_LABEL,
   isEligibilityLevel,
   isEventCategory,
   normalizeCategory,
   normalizeEligibility,
+  normalizeParticipantCategory,
   type EligibilityLevel,
   type EventCategory,
+  type ParticipantCategory,
 } from "@/convex/taxonomy";

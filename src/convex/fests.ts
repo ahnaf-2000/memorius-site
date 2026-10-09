@@ -1,6 +1,55 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { publicEvent, publicFest, requireUserId, uniqueSlug } from "./model";
+import {
+  programmeAccess,
+  publicEvent,
+  publicFest,
+  requireUserId,
+  uniqueSlug,
+} from "./model";
+
+/** Long enough for a real sentence, short enough to stay one. */
+const TEMPLATE_LIMITS = {
+  subject: 160,
+  heading: 120,
+  intro: 900,
+  closing: 300,
+} as const;
+
+/**
+ * The organizer's own wording, tidied. An empty template is no template: the
+ * product's sentence is used instead of a blank line in someone's inbox.
+ */
+function cleanTemplate(template: {
+  subject?: string;
+  heading?: string;
+  intro?: string;
+  closing?: string;
+}) {
+  const clean = {
+    subject: template.subject?.trim().slice(0, TEMPLATE_LIMITS.subject),
+    heading: template.heading?.trim().slice(0, TEMPLATE_LIMITS.heading),
+    intro: template.intro?.trim().slice(0, TEMPLATE_LIMITS.intro),
+    closing: template.closing?.trim().slice(0, TEMPLATE_LIMITS.closing),
+  };
+  const written = Object.values(clean).filter(
+    (value) => value !== undefined && value !== "",
+  );
+  if (written.length === 0) return undefined;
+  return {
+    subject: clean.subject || undefined,
+    heading: clean.heading || undefined,
+    intro: clean.intro || undefined,
+    closing: clean.closing || undefined,
+  };
+}
+
+const emailTemplateArg = v.object({
+  subject: v.optional(v.string()),
+  heading: v.optional(v.string()),
+  intro: v.optional(v.string()),
+  closing: v.optional(v.string()),
+});
 
 const statusValidator = v.union(
   v.literal("draft"),
@@ -52,7 +101,7 @@ export const getBySlug = query({
 
     const sorted = events
       .sort((a, b) => a.startTime - b.startTime)
-      .map((event) => publicEvent(event, now));
+      .map((event) => publicEvent(event, now, fest));
 
     return {
       fest: {
@@ -126,6 +175,13 @@ export const create = mutation({
   },
 });
 
+/**
+ * Programme details, cancellation policy and the wording of its emails.
+ *
+ * A manager may edit them — that is what a manager is for — but the settings
+ * themselves are visible to every reader of the catalogue, so a change here
+ * changes what a customer is told before they book.
+ */
 export const update = mutation({
   args: {
     id: v.id("fests"),
@@ -137,14 +193,14 @@ export const update = mutation({
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
     status: v.optional(statusValidator),
+    /** Minor units charged when a place is released after the free window. */
+    cancellationFee: v.optional(v.number()),
+    cancellationWindowHours: v.optional(v.number()),
+    emailTemplate: v.optional(emailTemplateArg),
   },
   handler: async (ctx, { id, ...patch }) => {
-    const userId = await requireUserId(ctx);
-    const fest = await ctx.db.get(id);
-    if (fest === null) throw new Error("That programme no longer exists.");
-    if (fest.ownerId !== userId) {
-      throw new Error("Only the owning account can edit this programme.");
-    }
+    const access = await programmeAccess(ctx, id, "manager");
+    const fest = access.fest;
     await ctx.db.patch(id, {
       ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
       ...(patch.organization !== undefined
@@ -162,8 +218,90 @@ export const update = mutation({
       ...(patch.startDate !== undefined ? { startDate: patch.startDate } : {}),
       ...(patch.endDate !== undefined ? { endDate: patch.endDate } : {}),
       ...(patch.status !== undefined ? { status: patch.status } : {}),
+      ...(patch.cancellationFee !== undefined
+        ? { cancellationFee: Math.max(0, Math.round(patch.cancellationFee)) }
+        : {}),
+      ...(patch.cancellationWindowHours !== undefined
+        ? {
+            cancellationWindowHours: Math.min(
+              720,
+              Math.max(0, Math.round(patch.cancellationWindowHours)),
+            ),
+          }
+        : {}),
+      ...(patch.emailTemplate !== undefined
+        ? { emailTemplate: cleanTemplate(patch.emailTemplate) }
+        : {}),
     });
     return { slug: fest.slug };
+  },
+});
+
+/**
+ * The programmes this account runs or helps run, with each one's own settings.
+ *
+ * The console reads this rather than `mine`, because a collaborator has to see
+ * the programme they were invited to — and because the cancellation policy and
+ * the email wording belong to the programme, not to whoever opened the page.
+ */
+export const console = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireUserId(ctx).catch(() => null);
+    if (userId === null) return [];
+    const now = Date.now();
+
+    const owned = await ctx.db
+      .query("fests")
+      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+      .collect();
+
+    const links = await ctx.db
+      .query("collaborators")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    const active = links.filter((link) => link.status === "active");
+    const shared = (
+      await Promise.all(active.map((link) => ctx.db.get(link.festId)))
+    ).filter((fest) => fest !== null);
+
+    const seen = new Set<string>();
+    const all = [...owned, ...shared].filter((fest) => {
+      if (seen.has(fest._id)) return false;
+      seen.add(fest._id);
+      return true;
+    });
+
+    const rows = await Promise.all(
+      all.map(async (fest) => {
+        const events = await ctx.db
+          .query("events")
+          .withIndex("by_fest", (q) => q.eq("festId", fest._id))
+          .collect();
+        const team = await ctx.db
+          .query("collaborators")
+          .withIndex("by_fest", (q) => q.eq("festId", fest._id))
+          .collect();
+        const link = active.find((row) => row.festId === fest._id);
+        const isOwner = fest.ownerId === userId;
+        return {
+          ...publicFest(fest, now),
+          eventCount: events.length,
+          seatsTaken: events.reduce((sum, event) => sum + event.seatsTaken, 0),
+          capacity: events.reduce((sum, event) => sum + event.capacity, 0),
+          role: isOwner ? ("owner" as const) : (link?.role ?? "viewer"),
+          isOwner,
+          canEdit: isOwner || link?.role === "manager" || link?.role === "editor",
+          cancellationFee: fest.cancellationFee ?? 0,
+          cancellationWindowHours: fest.cancellationWindowHours ?? 48,
+          emailTemplate: fest.emailTemplate ?? null,
+          teamSize: team.filter((row) => row.status === "active").length,
+          pendingInvites: team.filter((row) => row.status === "invited").length,
+        };
+      }),
+    );
+
+    return rows.sort((a, b) => a.startDate - b.startDate);
   },
 });
 

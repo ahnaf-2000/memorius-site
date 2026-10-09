@@ -91,3 +91,78 @@ export function normalizeEligibility(value: string): EligibilityLevel {
   );
   return match ?? OPEN_ELIGIBILITY;
 }
+
+/**
+ * Who a participant is on the guest list.
+ *
+ * Chosen by the customer when they book — a student knows they are one — and
+ * adjustable by the organizer afterwards, because a speaker often books as a
+ * delegate before anyone tells the desk. It is a closed list for the same
+ * reason as the rest of the taxonomy: "students" has to mean the same thing in
+ * the filter as it does on the booking.
+ */
+export const PARTICIPANT_CATEGORIES = [
+  "delegate",
+  "student",
+  "speaker",
+  "press",
+  "volunteer",
+  "guest",
+  "staff",
+] as const;
+
+export type ParticipantCategory = (typeof PARTICIPANT_CATEGORIES)[number];
+
+/** What a booking is when the customer says nothing. */
+export const DEFAULT_PARTICIPANT_CATEGORY: ParticipantCategory = "delegate";
+
+export const PARTICIPANT_CATEGORY_LABEL: Record<
+  ParticipantCategory,
+  { name: string; blurb: string }
+> = {
+  delegate: {
+    name: "Delegate",
+    blurb: "Here for the programme, booking on your own account.",
+  },
+  student: {
+    name: "Student",
+    blurb: "Attending in a student capacity, with a student's place.",
+  },
+  speaker: {
+    name: "Speaker",
+    blurb: "On the bill, or speaking in a session.",
+  },
+  press: {
+    name: "Press",
+    blurb: "Writing about it, with a notebook or a camera.",
+  },
+  volunteer: {
+    name: "Volunteer",
+    blurb: "Helping run the day rather than sitting through it.",
+  },
+  guest: {
+    name: "Guest",
+    blurb: "Invited by someone else on the programme.",
+  },
+  staff: {
+    name: "Staff",
+    blurb: "Working the event for the organization.",
+  },
+};
+
+export function isParticipantCategory(
+  value: string,
+): value is ParticipantCategory {
+  return (PARTICIPANT_CATEGORIES as readonly string[]).includes(value);
+}
+
+/** Anything unrecognised is a delegate: the plainest thing to be. */
+export function normalizeParticipantCategory(
+  value: string,
+): ParticipantCategory {
+  const trimmed = value.trim().toLowerCase();
+  const match = PARTICIPANT_CATEGORIES.find(
+    (category) => category === trimmed,
+  );
+  return match ?? DEFAULT_PARTICIPANT_CATEGORY;
+}

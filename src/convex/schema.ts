@@ -39,12 +39,68 @@ export const eventFormatValidator = v.union(
 );
 export type EventFormat = Infer<typeof eventFormatValidator>;
 
+/**
+ * A place on a guest list. `declined` is the organizer's own answer — a
+ * request they could not confirm — and is deliberately not the same as a
+ * cancellation the customer chose.
+ */
 export const bookingStatusValidator = v.union(
   v.literal("confirmed"),
   v.literal("waitlisted"),
   v.literal("cancelled"),
+  v.literal("declined"),
 );
 export type BookingStatus = Infer<typeof bookingStatusValidator>;
+
+/**
+ * Who a participant is on the guest list, chosen when they book and adjustable
+ * by the organizer afterwards. It is what makes "show me the students" a
+ * question the console can answer.
+ */
+export const participantCategoryValidator = v.union(
+  v.literal("delegate"),
+  v.literal("student"),
+  v.literal("speaker"),
+  v.literal("press"),
+  v.literal("volunteer"),
+  v.literal("guest"),
+  v.literal("staff"),
+);
+export type ParticipantCategory = Infer<typeof participantCategoryValidator>;
+
+/**
+ * What a collaborator may do on someone else's programme.
+ *
+ * manager  everything the owner can do, except delete the programme or change
+ *          who else collaborates on it
+ * editor   events, announcements, email wording and the guest list
+ * viewer   read only: the guest list and the analytics, nothing that writes
+ */
+export const collaboratorRoleValidator = v.union(
+  v.literal("manager"),
+  v.literal("editor"),
+  v.literal("viewer"),
+);
+export type CollaboratorRole = Infer<typeof collaboratorRoleValidator>;
+
+export const collaboratorStatusValidator = v.union(
+  v.literal("invited"),
+  v.literal("active"),
+  v.literal("revoked"),
+);
+export type CollaboratorStatus = Infer<typeof collaboratorStatusValidator>;
+
+/**
+ * The wording an organizer can rewrite on the email a customer gets after
+ * booking. Every field is optional: absent means the product's own sentence.
+ */
+export const emailTemplateValidator = v.object({
+  subject: v.optional(v.string()),
+  heading: v.optional(v.string()),
+  intro: v.optional(v.string()),
+  closing: v.optional(v.string()),
+});
+export type EmailTemplate = Infer<typeof emailTemplateValidator>;
 
 export const paymentStatusValidator = v.union(
   v.literal("paid"),
@@ -137,6 +193,15 @@ const schema = defineSchema(
       endDate: v.optional(v.number()),
       status: festStatusValidator,
       ownerId: v.optional(v.id("users")), // absent for the read-only showcase programmes
+      /**
+       * What releasing a place late costs. Kept on the programme so a whole
+       * season shares one policy, and overridable per event below.
+       */
+      cancellationFee: v.optional(v.number()), // minor units, base currency
+      /** Free to release until this many hours before the event starts. */
+      cancellationWindowHours: v.optional(v.number()),
+      /** The organizer's own wording for the post-booking email. */
+      emailTemplate: v.optional(emailTemplateValidator),
       showcase: v.optional(v.boolean()), // seeded example data
       showcaseVersion: v.optional(v.number()), // lets the seed replace older showcase data
       createdAt: v.number(),
@@ -170,6 +235,9 @@ const schema = defineSchema(
       specialGuests: v.optional(v.array(v.string())),
       /** The organizer's own note for attendees — printed as None when absent. */
       organizerNotes: v.optional(v.string()),
+      /** A cancellation policy for this one event, overriding the programme. */
+      cancellationFee: v.optional(v.number()),
+      cancellationWindowHours: v.optional(v.number()),
       /** Everything announced after publication, newest first. */
       announcements: v.optional(
         v.array(
@@ -177,6 +245,9 @@ const schema = defineSchema(
             title: v.string(),
             body: v.string(),
             at: v.number(),
+            /** Guests emailed when it was posted, and when. */
+            emailed: v.optional(v.number()),
+            emailedAt: v.optional(v.number()),
           }),
         ),
       ),
@@ -203,6 +274,16 @@ const schema = defineSchema(
       amountPaid: v.number(), // minor units actually settled
       promoCode: v.optional(v.string()), // campaign code applied, if any
       discount: v.optional(v.number()), // minor units taken off by the code
+      /** Who the participant is on this guest list. */
+      participantCategory: v.optional(participantCategoryValidator),
+      /** The organizer's own decision, with the note they attached to it. */
+      decidedAt: v.optional(v.number()),
+      decisionNote: v.optional(v.string()),
+      /** Recorded when a place is released after the free window shuts. */
+      cancellationFee: v.optional(v.number()),
+      /** The door roster: who actually arrived, and who marked them in. */
+      checkedInAt: v.optional(v.number()),
+      checkedInBy: v.optional(v.id("users")),
       reference: v.string(), // booking reference shown to the customer
       createdAt: v.number(),
     })
@@ -210,6 +291,28 @@ const schema = defineSchema(
       .index("by_user", ["userId"])
       .index("by_fest", ["festId"])
       .index("by_event_user", ["eventId", "userId"]),
+
+    /**
+     * Someone an organizer has asked to help run a programme.
+     *
+     * Kept beside the programme rather than on the user, because access is a
+     * property of the relationship: the same account can be a manager on one
+     * season and a viewer on another, and revoking one leaves the other alone.
+     */
+    collaborators: defineTable({
+      festId: v.id("fests"),
+      email: v.string(), // folded to lower case; the invite is matched on it
+      name: v.optional(v.string()),
+      role: collaboratorRoleValidator,
+      status: collaboratorStatusValidator,
+      invitedBy: v.id("users"),
+      userId: v.optional(v.id("users")), // set once they accept
+      invitedAt: v.number(),
+      respondedAt: v.optional(v.number()),
+    })
+      .index("by_fest", ["festId"])
+      .index("by_email", ["email"])
+      .index("by_user", ["userId"]),
 
     /** Customer posts on an event: a question, a note, a comment, a file. */
     comments: defineTable({

@@ -345,6 +345,19 @@ function shell(heading: string, body: string): string {
 </body></html>`;
 }
 
+/**
+ * The words an organizer may drop into their own sentences.
+ *
+ * Substitution happens on the server, at send time, so a template written once
+ * quotes the person it is addressed to: the customer's name, their reference,
+ * their own category and the venue are all read from the booking being sent.
+ */
+function fillTokens(value: string, tokens: Record<string, string>): string {
+  return value.replace(/\{\{(\w+)\}\}/g, (match, key: string) =>
+    tokens[key] ?? match,
+  );
+}
+
 function escape(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -362,6 +375,19 @@ function escape(value: string): string {
 export const sendBookingConfirmation = internalAction({
   args: {
     to: v.string(),
+    /** The organizer's own wording, when they have written any. */
+    template: v.union(
+      v.object({
+        subject: v.optional(v.string()),
+        heading: v.optional(v.string()),
+        intro: v.optional(v.string()),
+        closing: v.optional(v.string()),
+      }),
+      v.null(),
+    ),
+    participantCategory: v.string(),
+    cancellationFee: v.number(),
+    cancellationWindowHours: v.number(),
     fullName: v.string(),
     reference: v.string(),
     status: v.string(),
@@ -402,6 +428,17 @@ export const sendBookingConfirmation = internalAction({
       },
       { label: "Special notes from the organizer", value: args.organizerNotes },
       { label: "Price per place", value: "No charge" },
+      {
+        label: "Guest list category",
+        value: categoryLabel(args.participantCategory),
+      },
+      {
+        label: "Releasing your place",
+        value: cancellationText(
+          args.cancellationFee,
+          args.cancellationWindowHours,
+        ),
+      },
     ];
 
     const note =
@@ -446,21 +483,56 @@ export const sendBookingConfirmation = internalAction({
             )
             .join("")}`;
 
+    // The organizer's wording wins where they wrote any; where they did not, the
+    // product says it in its own voice. The reference is always appended to the
+    // subject so the message can be found by search later, even when the
+    // heading is the organizer's own.
+    const tokens: Record<string, string> = {
+      name: args.fullName,
+      event: args.eventTitle,
+      reference: args.reference,
+      programme: args.programmeName,
+      organization: args.organization,
+      when: args.when,
+      time: args.time,
+      venue: args.venue,
+      category: categoryLabel(args.participantCategory),
+      deadline: args.deadline,
+    };
+    const written = (value: string) => fillTokens(value, tokens);
+
+    const subject =
+      args.template?.subject === undefined
+        ? `Your place is confirmed — ${args.eventTitle} (${args.reference})`
+        : `${written(args.template.subject)} (${args.reference})`;
+    const heading =
+      args.template?.heading === undefined
+        ? args.status === "waitlisted"
+          ? "You are on the waiting list"
+          : "Your place is confirmed"
+        : written(args.template.heading);
+    const intro =
+      args.template?.intro === undefined
+        ? args.status === "waitlisted"
+          ? "The room is full, so your name is on the waiting list and moves up automatically the moment a place is released."
+          : "Your place is held. Everything you need at the door is below, and the invoice is attached as a printable PDF."
+        : written(args.template.intro);
+    const closing =
+      args.template?.closing === undefined
+        ? null
+        : written(args.template.closing);
+
     await deliver({
       to: args.to,
-      subject: `Your place is confirmed — ${args.eventTitle} (${args.reference})`,
+      subject,
       html: shell(
-        args.status === "waitlisted"
-          ? "You are on the waiting list"
-          : "Your place is confirmed",
+        heading,
         `<p style="margin:0 0 18px;font-size:14px;line-height:1.7">Hello ${escape(
           args.fullName,
         )}, </p>
-         <p style="margin:0 0 18px;font-size:14px;line-height:1.7">${
-           args.status === "waitlisted"
-             ? "The room is full, so your name is on the waiting list and moves up automatically the moment a place is released."
-             : "Your place is held. Everything you need at the door is below, and the invoice is attached as a printable PDF."
-         }</p>
+         <p style="margin:0 0 18px;font-size:14px;line-height:1.7">${escape(
+           intro,
+         )}</p>
          <div style="border:1px dashed #d8d5d0;border-radius:10px;padding:14px 16px;margin-bottom:20px">
            <p style="margin:0;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#7a7a7e">Reference</p>
            <p style="margin:6px 0 0;font-size:19px;letter-spacing:.06em">${escape(
@@ -469,6 +541,13 @@ export const sendBookingConfirmation = internalAction({
          </div>
          <table role="presentation" width="100%" style="border-collapse:collapse">${details}</table>
          ${announcements}
+         ${
+           closing === null
+             ? ""
+             : `<p style="margin:22px 0 0;font-size:13px;line-height:1.7;color:#3f3f43">${escape(
+                 closing,
+               )}</p>`
+         }
          <p style="margin:24px 0 0"><a href="${args.eventUrl}" style="display:inline-block;background:#1b1b1c;color:#ffffff;text-decoration:none;border-radius:999px;padding:11px 20px;font-size:13px">Open the event page</a></p>
          <p style="margin:14px 0 0;font-size:12px;color:#7a7a7e">The attached invoice prints as it is. Your bookings, and this reference, live at <a href="${args.invoiceUrl}" style="color:#1b1b1c">${args.invoiceUrl}</a></p>`,
       ),
@@ -490,6 +569,173 @@ export const sendBookingConfirmation = internalAction({
     });
 
     return { sent: true as const, reference: args.reference };
+  },
+});
+
+/* ---------------------------------------------------------------- sentences */
+
+const STATUS_SENTENCE: Record<string, string> = {
+  confirmed: "Confirmed",
+  waitlisted: "On the waiting list",
+  cancelled: "Released",
+  declined: "Not confirmed",
+};
+
+function statusLabel(status: string): string {
+  return STATUS_SENTENCE[status] ?? status;
+}
+
+const CATEGORY_SENTENCE: Record<string, string> = {
+  delegate: "Delegate",
+  student: "Student",
+  speaker: "Speaker",
+  press: "Press",
+  volunteer: "Volunteer",
+  guest: "Guest",
+  staff: "Staff",
+};
+
+function categoryLabel(category: string): string {
+  return CATEGORY_SENTENCE[category] ?? "Guest";
+}
+
+/** Minor units of the base currency, written the way a person writes money. */
+function money(minor: number): string {
+  const major = minor / 100;
+  return `$${minor % 100 === 0 ? major.toFixed(0) : major.toFixed(2)}`;
+}
+
+/** The cancellation policy, as a sentence a customer can act on. */
+function cancellationText(fee: number, hours: number): string {
+  if (fee === 0) {
+    return `Free to release any time, up to ${hours} hours before it starts`;
+  }
+  return `${money(fee)} if released within ${hours} hours of the start`;
+}
+
+/* ----------------------------------------------------------------- decision */
+
+/**
+ * The organizer's answer to a booking.
+ *
+ * A decision is the organizer doing something deliberate to one person, so it
+ * is always written down and always said out loud: confirmed, held on the
+ * waiting list, released, or declined with the reason they gave. The note is
+ * quoted rather than paraphrased — it is the sentence the organizer chose.
+ */
+export const sendDecisionEmail = internalAction({
+  args: {
+    to: v.string(),
+    fullName: v.string(),
+    reference: v.string(),
+    status: v.string(),
+    eventTitle: v.string(),
+    programmeName: v.string(),
+    organization: v.string(),
+    when: v.string(),
+    time: v.string(),
+    venue: v.string(),
+    note: v.optional(v.string()),
+    decidedByName: v.string(),
+    eventUrl: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    const heading =
+      args.status === "confirmed"
+        ? "Your place is confirmed"
+        : args.status === "waitlisted"
+          ? "You are on the waiting list"
+          : args.status === "declined"
+            ? "We could not confirm your place"
+            : "Your place has been released";
+
+    const sentence =
+      args.status === "confirmed"
+        ? "The organizer has confirmed your place. Everything you need at the door is below."
+        : args.status === "waitlisted"
+          ? "The organizer has put your name on the waiting list. You move up automatically the moment a place is released, and nothing further is needed from you."
+          : args.status === "declined"
+            ? "The organizer was not able to confirm this place. Nothing is owed, and you can book again on another event."
+            : "The organizer has released this place on your behalf. Nothing is owed.";
+
+    await deliver({
+      to: args.to,
+      subject: `${statusLabel(args.status)} — ${args.eventTitle} (${args.reference})`,
+      html: shell(
+        heading,
+        `<p style="margin:0 0 18px;font-size:14px;line-height:1.7">Hello ${escape(
+          args.fullName,
+        )}, </p>
+         <p style="margin:0 0 18px;font-size:14px;line-height:1.7">${escape(
+           sentence,
+         )}</p>
+         ${args.note === undefined ? "" : `<div style="margin:0 0 18px;border-left:3px solid #e6e4e0;padding:2px 0 2px 14px"><p style="margin:0;font-size:13px;line-height:1.7">${escape(args.note)}</p><p style="margin:6px 0 0;font-size:11px;color:#7a7a7e">— ${escape(args.decidedByName)}, ${escape(args.organization)}</p></div>`}
+         <table role="presentation" width="100%" style="border-collapse:collapse">
+           <tr><td style="padding:7px 0;font-size:12px;color:#7a7a7e">Reference</td><td style="padding:7px 0;font-size:13px;text-align:right">${escape(args.reference)}</td></tr>
+           <tr><td style="padding:7px 0;font-size:12px;color:#7a7a7e">Programme</td><td style="padding:7px 0;font-size:13px;text-align:right">${escape(args.organization)} · ${escape(args.programmeName)}</td></tr>
+           <tr><td style="padding:7px 0;font-size:12px;color:#7a7a7e">Date</td><td style="padding:7px 0;font-size:13px;text-align:right">${escape(args.when)}</td></tr>
+           <tr><td style="padding:7px 0;font-size:12px;color:#7a7a7e">Time</td><td style="padding:7px 0;font-size:13px;text-align:right">${escape(args.time)}</td></tr>
+           <tr><td style="padding:7px 0;font-size:12px;color:#7a7a7e">Venue</td><td style="padding:7px 0;font-size:13px;text-align:right">${escape(args.venue)}</td></tr>
+         </table>
+         <p style="margin:24px 0 0"><a href="${args.eventUrl}" style="display:inline-block;background:#1b1b1c;color:#ffffff;text-decoration:none;border-radius:999px;padding:11px 20px;font-size:13px">Open the event page</a></p>`,
+      ),
+      text: [
+        heading,
+        sentence,
+        ...(args.note === undefined ? [] : [`Note from ${args.decidedByName}: ${args.note}`]),
+        `Reference: ${args.reference}`,
+        `Event: ${args.eventUrl}`,
+      ].join("\n"),
+    });
+
+    return { sent: true as const, status: args.status };
+  },
+});
+
+/* ---------------------------------------------------------------- broadcast */
+
+/**
+ * An announcement, emailed to everyone holding a place.
+ *
+ * Written as one message repeated rather than a newsletter: it quotes the same
+ * heading the organizer posted on the event page, and it carries their own
+ * reference and their own name so a guest knows which booking is being changed.
+ */
+export const sendAnnouncementBroadcast = internalAction({
+  args: {
+    to: v.string(),
+    fullName: v.string(),
+    reference: v.string(),
+    eventTitle: v.string(),
+    title: v.string(),
+    body: v.string(),
+    organization: v.string(),
+    programmeName: v.string(),
+    eventUrl: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    await deliver({
+      to: args.to,
+      subject: `[${args.eventTitle}] ${args.title}`,
+      html: shell(
+        args.title,
+        `<p style="margin:0 0 18px;font-size:14px;line-height:1.7">Hello ${escape(
+          args.fullName,
+        )}, </p>
+         <p style="margin:0 0 18px;font-size:14px;line-height:1.7">${escape(
+           args.body,
+         )}</p>
+         <p style="margin:0;font-size:12px;color:#7a7a7e">${escape(
+           args.organization,
+         )} · ${escape(args.programmeName)} — sent to you as the holder of reference ${escape(
+           args.reference,
+         )}.</p>
+         <p style="margin:18px 0 0"><a href="${args.eventUrl}" style="display:inline-block;background:#1b1b1c;color:#ffffff;text-decoration:none;border-radius:999px;padding:11px 20px;font-size:13px">Open the event page</a></p>`,
+      ),
+      text: `${args.title}\n\n${args.body}\n\n${args.organization} · ${args.programmeName}\nReference: ${args.reference}\n${args.eventUrl}`,
+    });
+
+    return { sent: true as const };
   },
 });
 

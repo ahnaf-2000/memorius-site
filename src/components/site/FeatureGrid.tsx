@@ -5,7 +5,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { FEATURES, FEATURE_TONES, type FeatureTone } from "@/lib/features";
+import {
+  FEATURES,
+  FEATURE_COUNT,
+  FEATURE_TONES,
+  type FeatureTone,
+} from "@/lib/features";
 import { cn } from "@/lib/utils";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { ArrowRight } from "lucide-react";
@@ -85,12 +90,13 @@ export function FeatureGrid() {
         <div className="max-w-2xl">
           <span className="label-eyebrow text-brand">Why Memorius</span>
           <h2 className="font-display mt-5 text-[24px] leading-[1.18] font-light tracking-[-0.016em] text-balance sm:text-[30px]">
-            A hundred reasons, and a square to put each one in.
+            {FEATURE_COUNT} reasons, and a square to put each one in.
           </h2>
           <p className="mt-3 text-[14px] leading-7 text-muted-foreground">
             Nothing below is on a roadmap: it is all in the product today. Hover
             or focus any square — one inch of it, on a wide screen — and the
-            reason shows itself.
+            reason shows itself. The last two, 101 and 102, are the ones the
+            people running the day asked for most.{" "}
           </p>
         </div>
 

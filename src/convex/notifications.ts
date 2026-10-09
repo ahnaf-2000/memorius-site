@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
+import { cancellationPolicy } from "./model";
 import { OPEN_ELIGIBILITY } from "./taxonomy";
 
 /**
@@ -27,7 +28,7 @@ function dateAndTime(ms: number, options: Intl.DateTimeFormatOptions) {
 }
 
 /** "Saturday, 14 March 2026" */
-function longDate(ms: number) {
+export function longDate(ms: number) {
   return dateAndTime(ms, {
     weekday: "long",
     day: "numeric",
@@ -46,7 +47,7 @@ function clock(ms: number) {
  * past midnight — or across days — says so rather than pretending it ends the
  * same afternoon.
  */
-function whenAndTime(start: number, end: number) {
+export function whenAndTime(start: number, end: number) {
   const sameDay = longDate(start) === longDate(end);
   return sameDay
     ? { when: longDate(start), time: `${clock(start)} – ${clock(end)}` }
@@ -70,7 +71,7 @@ function deadlineText(closesAt: number | undefined) {
  * project gets its domain. Without it the links fall back to the public name
  * rather than to CONVEX_SITE_URL, which serves the API and not these pages.
  */
-function appUrl(): string {
+export function appUrl(): string {
   const base =
     process.env.APP_URL ??
     process.env.PUBLIC_SITE_URL ??
@@ -107,9 +108,14 @@ export const bookingConfirmation = internalMutation({
       }));
 
     const site = appUrl();
+    const policy = cancellationPolicy(event, fest);
 
     await ctx.scheduler.runAfter(0, internal.mail.sendBookingConfirmation, {
       to: booking.email,
+      template: fest?.emailTemplate ?? null,
+      participantCategory: booking.participantCategory ?? "guest",
+      cancellationFee: policy.fee,
+      cancellationWindowHours: policy.hours,
       fullName: booking.fullName,
       reference: booking.reference,
       status: booking.status,
