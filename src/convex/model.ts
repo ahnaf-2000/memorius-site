@@ -105,6 +105,16 @@ export function publicEvent(event: Doc<"events">, now = Date.now()) {
     remaining: Math.max(0, event.capacity - event.seatsTaken),
     price: 0,
     registrationClosesAt: event.registrationClosesAt ?? null,
+    // The detail block a visitor reads before taking a place. Absent fields are
+    // published as explicit nulls so the page can print "None" rather than a
+    // gap, which is the honest answer to "what did the organizer say?".
+    eligibility: event.eligibility ?? "Open to everyone",
+    chiefGuest: event.chiefGuest ?? null,
+    specialGuests: event.specialGuests ?? [],
+    organizerNotes: event.organizerNotes ?? null,
+    announcements: (event.announcements ?? [])
+      .slice()
+      .sort((a, b) => b.at - a.at),
     state,
     stateLabel: SEAT_STATE_LABEL[state],
     accepting: state !== "past" && state !== "closed",

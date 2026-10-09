@@ -36,7 +36,20 @@ const TOPICS = [
   "Something else",
 ];
 
-const MIN_BODY = 20;
+/** An enquiry reaches the desk; support answers a customer mid-transaction. */
+type Desk = "enquiry" | "support";
+
+/** What a customer with something already in flight writes in about. */
+const SUPPORT_TOPICS = [
+  "A booking I have already made",
+  "An invoice or a receipt",
+  "Changing or cancelling a place",
+  "A problem with the website",
+  "Something else",
+];
+
+const MIN_BODY = 20; // an enquiry wants a sentence or two of context
+const MIN_SUPPORT_BODY = 15; // support is often "my reference is X, please help"
 const MAX_BODY = 2000;
 
 const NEXT_STEPS = [
@@ -93,22 +106,30 @@ function Field({
 }
 
 export default function Contact() {
-  const send = useMutation(api.contact.send);
+  // An enquiry reaches the desk; a support request reaches the moderator, who
+  // owns the inbox it lands in.
+  const sendEnquiry = useMutation(api.contact.send);
+  const sendSupport = useMutation(api.support.open);
   const { isAuthenticated, user } = useAuth();
 
+  const [desk, setDesk] = useState<Desk>("enquiry");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [topic, setTopic] = useState(TOPICS[0]);
+  const [supportTopic, setSupportTopic] = useState(SUPPORT_TOPICS[0]);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<{ reference: string } | null>(null);
 
+  const topics = desk === "support" ? SUPPORT_TOPICS : TOPICS;
+  const activeTopic = desk === "support" ? supportTopic : topic;
+  const minBody = desk === "support" ? MIN_SUPPORT_BODY : MIN_BODY;
   const bodyLength = body.trim().length;
   const emailLooksRight = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
   const ready =
-    name.trim().length >= 2 && emailLooksRight && bodyLength >= MIN_BODY;
+    name.trim().length >= 2 && emailLooksRight && bodyLength >= minBody;
 
   function useMyDetails() {
     if (user === undefined || user === null) return;
@@ -123,17 +144,21 @@ export default function Contact() {
     setPending(true);
     setError(null);
     try {
-      const result = await send({
-        name,
-        email,
-        topic,
-        subject: subject.trim() === "" ? undefined : subject,
-        body,
-      });
+      const result =
+        desk === "support"
+          ? await sendSupport({ name, email, topic: supportTopic, body })
+          : await sendEnquiry({
+              name,
+              email,
+              topic,
+              subject: subject.trim() === "" ? undefined : subject,
+              body,
+            });
       setSent({ reference: result.reference });
-      toast.success("Message sent", {
-        description: `Quote ${result.reference} if you follow up.`,
-      });
+      toast.success(
+        desk === "support" ? "Support request sent" : "Message sent",
+        { description: `Quote ${result.reference} if you follow up.` },
+      );
     } catch (submitError) {
       setError(errorMessage(submitError));
     } finally {
@@ -149,6 +174,7 @@ export default function Contact() {
     setSubject("");
     setBody("");
     setTopic(TOPICS[0]);
+    setSupportTopic(SUPPORT_TOPICS[0]);
   }
 
   return (
@@ -214,6 +240,44 @@ export default function Contact() {
                     transition={{ duration: 0.35, ease: EASE }}
                     className="space-y-5"
                   >
+                    <div
+                      role="tablist"
+                      aria-label="Where this should go"
+                      className="grid grid-cols-2 gap-1 rounded-full border border-border bg-muted/40 p-1"
+                    >
+                      {(
+                        [
+                          ["enquiry", "General enquiry"],
+                          ["support", "Customer support"],
+                        ] as const
+                      ).map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          role="tab"
+                          aria-selected={desk === value}
+                          onClick={() => {
+                            setDesk(value);
+                            setError(null);
+                          }}
+                          className={cn(
+                            "rounded-full px-4 py-2 text-[12.5px] transition-colors",
+                            desk === value
+                              ? "surface-card bg-background text-foreground shadow-hairline"
+                              : "text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className="text-[12px] leading-5 text-muted-foreground">
+                      {desk === "support"
+                        ? "Something already in flight — a booking, an invoice, a place to change. This goes straight to the moderator's inbox and is answered from there."
+                        : "Something new — a programme to publish, a partnership to talk through, a question about the catalogue."}
+                    </p>
+
                     {isAuthenticated && (
                       <button
                         type="button"
@@ -259,15 +323,19 @@ export default function Contact() {
                         What is it about
                       </Label>
                       <div className="flex flex-wrap gap-2">
-                        {TOPICS.map((option) => (
+                        {topics.map((option) => (
                           <button
                             key={option}
                             type="button"
-                            onClick={() => setTopic(option)}
-                            aria-pressed={topic === option}
+                            onClick={() =>
+                              desk === "support"
+                                ? setSupportTopic(option)
+                                : setTopic(option)
+                            }
+                            aria-pressed={activeTopic === option}
                             className={cn(
                               "chip",
-                              topic === option
+                              activeTopic === option
                                 ? "chip-tinted border-brand-line text-foreground"
                                 : "",
                             )}
@@ -278,15 +346,17 @@ export default function Contact() {
                       </div>
                     </div>
 
-                    <Field id="contact-subject" label="Subject" hint="Optional">
-                      <Input
-                        id="contact-subject"
-                        value={subject}
-                        onChange={(event) => setSubject(event.target.value)}
-                        placeholder="Transferring a booking to a colleague"
-                        className="h-10 bg-background shadow-none"
-                      />
-                    </Field>
+                    {desk === "enquiry" && (
+                      <Field id="contact-subject" label="Subject" hint="Optional">
+                        <Input
+                          id="contact-subject"
+                          value={subject}
+                          onChange={(event) => setSubject(event.target.value)}
+                          placeholder="Transferring a booking to a colleague"
+                          className="h-10 bg-background shadow-none"
+                        />
+                      </Field>
+                    )}
 
                     <div className="space-y-2">
                       <div className="flex items-baseline justify-between gap-4">
@@ -318,8 +388,8 @@ export default function Contact() {
                         className="bg-background shadow-none"
                       />
                       <p className="text-[11px] leading-5 text-muted-foreground">
-                        {bodyLength < MIN_BODY
-                          ? `${MIN_BODY - bodyLength} more character${MIN_BODY - bodyLength === 1 ? "" : "s"} and we can route it properly.`
+                        {bodyLength < minBody
+                          ? `${minBody - bodyLength} more character${minBody - bodyLength === 1 ? "" : "s"} and we can route it properly.`
                           : "That is plenty — we will take it from here."}
                       </p>
                     </div>
@@ -344,7 +414,7 @@ export default function Contact() {
                         ) : (
                           <Send className="size-4" />
                         )}
-                        Send message
+                        {desk === "support" ? "Send to support" : "Send message"}
                       </Button>
                       <span className="text-[12px] text-muted-foreground">
                         We never share your details.
@@ -364,7 +434,9 @@ export default function Contact() {
                       <Check className="text-tone-open size-5" />
                     </span>
                     <h2 className="mt-6 text-[22px] font-medium tracking-[-0.025em]">
-                      Message received
+                      {desk === "support"
+                        ? "Support request received"
+                        : "Message received"}
                     </h2>
                     <p className="mt-3 max-w-md text-[13px] leading-6 text-muted-foreground">
                       Thank you. It is logged, it has been routed by topic, and

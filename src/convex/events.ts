@@ -1,12 +1,28 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { publicBooking, publicEvent, requireUserId, uniqueSlug } from "./model";
+import { normalizeCategory, normalizeEligibility } from "./taxonomy";
 
 const formatValidator = v.union(
   v.literal("in-person"),
   v.literal("online"),
   v.literal("hybrid"),
 );
+
+/** Trim the guest list, drop the blanks and remember nothing was said twice. */
+function cleanGuests(names: string[] | undefined): string[] | undefined {
+  if (names === undefined) return undefined;
+  const seen = new Set<string>();
+  const cleaned: string[] = [];
+  for (const name of names) {
+    const trimmed = name.trim();
+    const key = trimmed.toLowerCase();
+    if (trimmed.length === 0 || seen.has(key)) continue;
+    seen.add(key);
+    cleaned.push(trimmed);
+  }
+  return cleaned.length === 0 ? undefined : cleaned;
+}
 
 /** The whole catalogue in one reactive read, each row carrying its programme. */
 export const list = query({
@@ -151,6 +167,10 @@ export const create = mutation({
     host: v.optional(v.string()),
     capacity: v.number(),
     registrationClosesAt: v.optional(v.number()),
+    eligibility: v.optional(v.string()),
+    chiefGuest: v.optional(v.string()),
+    specialGuests: v.optional(v.array(v.string())),
+    organizerNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
@@ -167,7 +187,7 @@ export const create = mutation({
       festId: args.festId,
       title: args.title.trim(),
       slug,
-      category: args.category.trim() || "Session",
+      category: normalizeCategory(args.category),
       summary: args.summary?.trim() || undefined,
       description: args.description?.trim() || undefined,
       format: args.format ?? "in-person",
@@ -180,6 +200,10 @@ export const create = mutation({
       // Every event on the platform is free of charge.
       price: 0,
       registrationClosesAt: args.registrationClosesAt,
+      eligibility: normalizeEligibility(args.eligibility ?? ""),
+      chiefGuest: args.chiefGuest?.trim() || undefined,
+      specialGuests: cleanGuests(args.specialGuests),
+      organizerNotes: args.organizerNotes?.trim() || undefined,
       createdAt: Date.now(),
     });
     return { id, slug };
@@ -200,6 +224,10 @@ export const update = mutation({
     host: v.optional(v.string()),
     capacity: v.optional(v.number()),
     registrationClosesAt: v.optional(v.number()),
+    eligibility: v.optional(v.string()),
+    chiefGuest: v.optional(v.string()),
+    specialGuests: v.optional(v.array(v.string())),
+    organizerNotes: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...patch }) => {
     const userId = await requireUserId(ctx);
@@ -212,7 +240,7 @@ export const update = mutation({
     await ctx.db.patch(id, {
       ...(patch.title !== undefined ? { title: patch.title.trim() } : {}),
       ...(patch.category !== undefined
-        ? { category: patch.category.trim() || "Session" }
+        ? { category: normalizeCategory(patch.category) }
         : {}),
       ...(patch.summary !== undefined
         ? { summary: patch.summary.trim() || undefined }
@@ -232,6 +260,18 @@ export const update = mutation({
         : {}),
       ...(patch.registrationClosesAt !== undefined
         ? { registrationClosesAt: patch.registrationClosesAt }
+        : {}),
+      ...(patch.eligibility !== undefined
+        ? { eligibility: normalizeEligibility(patch.eligibility) }
+        : {}),
+      ...(patch.chiefGuest !== undefined
+        ? { chiefGuest: patch.chiefGuest.trim() || undefined }
+        : {}),
+      ...(patch.specialGuests !== undefined
+        ? { specialGuests: cleanGuests(patch.specialGuests) }
+        : {}),
+      ...(patch.organizerNotes !== undefined
+        ? { organizerNotes: patch.organizerNotes.trim() || undefined }
         : {}),
     });
     return { slug: event.slug };

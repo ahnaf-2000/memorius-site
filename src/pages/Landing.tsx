@@ -55,6 +55,8 @@ import {
   ArrowRight,
   Building2,
   CalendarCheck,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   GaugeCircle,
   Globe,
@@ -79,6 +81,18 @@ import {
 import { Link } from "react-router";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
+
+/**
+ * The veils the featured card moves through, one per event. Each is a wash of
+ * a single token colour rather than a gradient picture, so a shade arriving
+ * reads as light moving across the card and never as a sticker on top of it.
+ */
+const SHADES = [
+  "radial-gradient(120% 90% at 12% 0%, var(--brand-soft) 0%, transparent 62%)",
+  "radial-gradient(120% 90% at 88% 4%, var(--warm-soft) 0%, transparent 60%)",
+  "radial-gradient(120% 90% at 20% 6%, var(--plum-soft) 0%, transparent 62%)",
+  "radial-gradient(120% 90% at 82% 0%, var(--cool-soft) 0%, transparent 60%)",
+];
 
 const FLOW = [
   {
@@ -457,18 +471,94 @@ function Marquee({
   );
 }
 
-function NextEventCard({ event }: { event: EventListItem }) {
+/**
+ * The featured event, and the ones behind it.
+ *
+ * The catalogue is read in stage order, so the card takes the next few events
+ * rather than one: it turns through them on its own, and every turn brings its
+ * own shade across the card while the elevation lifts and settles. Hovering,
+ * focusing or pressing an arrow holds it still — a card that moves under the
+ * cursor is a card nobody can read.
+ */
+function NextEventCard({ events }: { events: EventListItem[] }) {
+  const reduced = useReducedMotion();
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const count = events.length;
+  const event = events[index % count];
   const parts = dayParts(event.startTime);
+
+  useEffect(() => {
+    if (reduced === true || paused || count < 2) return;
+    const id = window.setInterval(
+      () => setIndex((current) => (current + 1) % count),
+      6400,
+    );
+    return () => window.clearInterval(id);
+  }, [reduced, paused, count]);
+
+  const go = (delta: number) =>
+    setIndex((current) => (current + delta + count) % count);
+
   return (
-    <div className="surface-card rounded-lg border border-border bg-card shadow-hairline hover:border-foreground/15">
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+    <div
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+      className="surface-card relative overflow-hidden rounded-lg border border-border bg-card shadow-hairline transition-[border-color,box-shadow] duration-700 ease-soft hover:border-foreground/15 hover:shadow-lift"
+    >
+      <AnimatePresence>
+        <motion.span
+          key={`shade-${index % count}`}
+          aria-hidden="true"
+          initial={{ opacity: 0, scale: 1.06, x: "6%" }}
+          animate={{ opacity: 1, scale: 1, x: "0%" }}
+          exit={{ opacity: 0, scale: 1.02, x: "-6%" }}
+          transition={{ duration: 1.4, ease: EASE }}
+          className="pointer-events-none absolute inset-0"
+          style={{ background: SHADES[index % SHADES.length] }}
+        />
+      </AnimatePresence>
+
+      <div className="relative flex items-center justify-between border-b border-border px-6 py-4">
         <p className="label-eyebrow">Next available</p>
-        <span className="text-[11px] tracking-[0.08em] text-muted-foreground uppercase">
-          {relativeDay(event.startTime)}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] tracking-[0.08em] text-muted-foreground uppercase">
+            {relativeDay(event.startTime)}
+          </span>
+          {count > 1 && (
+            <span className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => go(-1)}
+                aria-label="Previous event"
+                className="grid size-5 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <ChevronLeft className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => go(1)}
+                aria-label="Next event"
+                className="grid size-5 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <ChevronRight className="size-3.5" />
+              </button>
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="px-6 pt-7 pb-6">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={event._id}
+          initial={reduced === true ? undefined : { opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduced === true ? undefined : { opacity: 0, y: -12 }}
+          transition={{ duration: 0.55, ease: EASE }}
+        >
+      <div className="relative px-6 pt-7 pb-6">
         <div className="flex items-start gap-5">
           <div className="flex w-16 shrink-0 flex-col items-center rounded-md border border-border py-3">
             <span className="text-[10px] leading-none font-medium tracking-[0.14em] text-muted-foreground">
@@ -516,7 +606,7 @@ function NextEventCard({ event }: { event: EventListItem }) {
         </dl>
       </div>
 
-      <div className="flex items-center gap-3 border-t border-border px-6 py-4">
+      <div className="relative flex items-center gap-3 border-t border-border px-6 py-4">
         <Button asChild size="sm" className="h-9 gap-1.5 rounded-full px-4">
           <Link to={`/events/${event.slug}`}>
             Reserve a place
@@ -527,6 +617,31 @@ function NextEventCard({ event }: { event: EventListItem }) {
           {event.category}
         </span>
       </div>
+        </motion.div>
+      </AnimatePresence>
+
+      {count > 1 && (
+        <div className="relative flex items-center gap-1.5 border-t border-border px-6 py-3">
+          {events.map((row, position) => (
+            <button
+              key={row._id}
+              type="button"
+              onClick={() => setIndex(position)}
+              aria-label={`Show ${row.title}`}
+              aria-current={position === index % count}
+              className={cn(
+                "h-1 rounded-full transition-all duration-500 ease-soft",
+                position === index % count
+                  ? "w-6 bg-foreground"
+                  : "w-2 bg-border hover:bg-foreground/30",
+              )}
+            />
+          ))}
+          <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
+            {(index % count) + 1} / {count}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -1568,6 +1683,9 @@ export default function Landing() {
 
   const upcoming = (events ?? []).filter((event) => event.state !== "past");
   const nextEvent = upcoming[0];
+  // The featured card turns through the soonest events, not just the first:
+  // five is enough to feel alive and few enough to stay "next".
+  const nextEvents = upcoming.slice(0, 5);
   const totalCapacity = (events ?? []).reduce(
     (sum, event) => sum + event.capacity,
     0,
@@ -1725,7 +1843,7 @@ export default function Landing() {
                   <Skeleton className="h-[440px] w-full rounded-lg" />
                 ) : (
                   <Tilt>
-                    <NextEventCard event={nextEvent} />
+                    <NextEventCard events={nextEvents} />
                   </Tilt>
                 )}
               </div>

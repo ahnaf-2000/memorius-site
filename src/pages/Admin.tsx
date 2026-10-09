@@ -53,6 +53,18 @@ import type {
   ProgrammeListItem,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ELIGIBILITY_LEVELS,
+  EVENT_CATEGORIES,
+  OPEN_ELIGIBILITY,
+} from "@/lib/categories";
 import { useMutation, useQuery } from "convex/react";
 import {
   ArrowUpRight,
@@ -281,7 +293,7 @@ function AddEventDialog({ festId }: { festId: Id<"fests"> }) {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "",
-    category: "Session",
+    category: EVENT_CATEGORIES[0] as string,
     venue: "",
     host: "",
     capacity: "40",
@@ -289,6 +301,11 @@ function AddEventDialog({ festId }: { festId: Id<"fests"> }) {
     description: "",
     startTime: nextWeekAt(9),
     endTime: nextWeekAt(12),
+    eligibility: OPEN_ELIGIBILITY as string,
+    chiefGuest: "",
+    specialGuests: "",
+    organizerNotes: "",
+    deadline: "",
   });
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -297,6 +314,11 @@ function AddEventDialog({ festId }: { festId: Id<"fests"> }) {
     const endTime = fromDateTimeInput(form.endTime);
     if (startTime === null || endTime === null) {
       setError("Add a start and end time for the event.");
+      return;
+    }
+    const deadline = fromDateTimeInput(form.deadline);
+    if (deadline !== null && deadline > startTime) {
+      setError("The booking deadline has to fall before the event starts.");
       return;
     }
     setPending(true);
@@ -313,6 +335,14 @@ function AddEventDialog({ festId }: { festId: Id<"fests"> }) {
         description: form.description,
         startTime,
         endTime,
+        eligibility: form.eligibility,
+        chiefGuest: form.chiefGuest,
+        specialGuests: form.specialGuests
+          .split("\n")
+          .map((name) => name.trim())
+          .filter(Boolean),
+        organizerNotes: form.organizerNotes,
+        ...(deadline === null ? {} : { registrationClosesAt: deadline }),
       });
       toast.success("Event published", { description: form.title });
       setOpen(false);
@@ -358,18 +388,45 @@ function AddEventDialog({ festId }: { festId: Id<"fests"> }) {
               className={inputClass}
             />
           </FormField>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <FormField id="category" label="Category">
-              <Input
-                id="category"
+              <Select
                 value={form.category}
-                onChange={(event) =>
-                  setForm({ ...form, category: event.target.value })
-                }
-                placeholder="Forum"
-                className={inputClass}
-              />
+                onValueChange={(value) => setForm({ ...form, category: value })}
+              >
+                <SelectTrigger id="category" className="h-10 w-full bg-background shadow-none">
+                  <SelectValue placeholder="Pick a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EVENT_CATEGORIES.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </FormField>
+            <FormField id="eligibility" label="Who may attend">
+              <Select
+                value={form.eligibility}
+                onValueChange={(value) =>
+                  setForm({ ...form, eligibility: value })
+                }
+              >
+                <SelectTrigger id="eligibility" className="h-10 w-full bg-background shadow-none">
+                  <SelectValue placeholder="Open to everyone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ELIGIBILITY_LEVELS.map((level) => (
+                    <SelectItem key={level} value={level}>
+                      {level}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
             <FormField id="capacity" label="Places">
               <Input
                 id="capacity"
@@ -383,6 +440,62 @@ function AddEventDialog({ festId }: { festId: Id<"fests"> }) {
               />
             </FormField>
           </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField id="deadline" label="Booking closes (optional)">
+              <Input
+                id="deadline"
+                type="datetime-local"
+                value={form.deadline}
+                onChange={(event) =>
+                  setForm({ ...form, deadline: event.target.value })
+                }
+                className={inputClass}
+              />
+            </FormField>
+            <FormField id="chiefGuest" label="Chief guest (optional)">
+              <Input
+                id="chiefGuest"
+                value={form.chiefGuest}
+                onChange={(event) =>
+                  setForm({ ...form, chiefGuest: event.target.value })
+                }
+                placeholder="Priya Raman"
+                className={inputClass}
+              />
+            </FormField>
+          </div>
+          <FormField
+            id="specialGuests"
+            label="Special guests (one per line)"
+          >
+            <Textarea
+              id="specialGuests"
+              rows={3}
+              value={form.specialGuests}
+              onChange={(event) =>
+                setForm({ ...form, specialGuests: event.target.value })
+              }
+              placeholder={
+                "Dr. Alastair Whitfield, Meridian Faculty\nHalima Yusuf, Arden Logistics"
+              }
+              className="bg-background shadow-none"
+            />
+          </FormField>
+          <FormField
+            id="organizerNotes"
+            label="Special notes from the organizer (optional)"
+          >
+            <Textarea
+              id="organizerNotes"
+              rows={2}
+              value={form.organizerNotes}
+              onChange={(event) =>
+                setForm({ ...form, organizerNotes: event.target.value })
+              }
+              placeholder="Lunch is included; tell us who you would like to sit with."
+              className="bg-background shadow-none"
+            />
+          </FormField>
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField id="startTime" label="Starts">
               <Input

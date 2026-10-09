@@ -925,6 +925,85 @@ export default function EventDetail() {
               )}
 
               <section className="mt-16">
+                <h2 className="label-eyebrow">Event details</h2>
+                <dl className="mt-6 max-w-2xl border-t border-border">
+                  {[
+                    {
+                      label: "Booking deadline",
+                      value:
+                        event.registrationClosesAt === null
+                          ? "Open until the room is full"
+                          : `${formatLongDate(
+                              event.registrationClosesAt,
+                            )} · ${relativeDay(event.registrationClosesAt)}`,
+                    },
+                    {
+                      label: "Capacity",
+                      value: `${event.capacity} places · ${event.seatsTaken} booked · ${event.remaining} left`,
+                    },
+                    { label: "Eligibility", value: event.eligibility },
+                    { label: "Chief guest", value: event.chiefGuest ?? "None" },
+                    {
+                      label: "Special guests",
+                      value:
+                        event.specialGuests.length === 0
+                          ? "None"
+                          : event.specialGuests.join(" · "),
+                    },
+                    {
+                      label: "Special notes from the organizer",
+                      value: event.organizerNotes ?? "None",
+                    },
+                    { label: "Category", value: event.category },
+                  ].map((row) => (
+                    <div
+                      key={row.label}
+                      className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-1 border-b border-border py-4"
+                    >
+                      <dt className="text-[11px] tracking-[0.1em] text-muted-foreground uppercase">
+                        {row.label}
+                      </dt>
+                      <dd className="max-w-[26rem] text-right text-[13px] leading-6 text-foreground">
+                        {row.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+
+              <section className="mt-16">
+                <h2 className="label-eyebrow">Announcements</h2>
+                {event.announcements.length === 0 ? (
+                  <p className="mt-6 max-w-2xl rounded-lg border border-dashed border-border px-5 py-6 text-[13px] leading-6 text-muted-foreground">
+                    None yet. Anything the organizer needs to change — a room
+                    move, a start time, a guest — is posted here the moment it
+                    happens.
+                  </p>
+                ) : (
+                  <ul className="mt-6 max-w-2xl space-y-4 border-t border-border pt-6">
+                    {event.announcements.map((note) => (
+                      <li
+                        key={`${note.title}-${note.at}`}
+                        className="rounded-lg border border-border bg-card px-5 py-4 shadow-hairline"
+                      >
+                        <div className="flex flex-wrap items-baseline justify-between gap-3">
+                          <p className="text-[14px] font-medium tracking-[-0.012em]">
+                            {note.title}
+                          </p>
+                          <span className="text-[11px] tracking-[0.06em] text-muted-foreground uppercase">
+                            {relativeDay(note.at)}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-[13px] leading-6 text-muted-foreground">
+                          {note.body}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <section className="mt-16">
                 <h2 className="label-eyebrow">Booking and payment</h2>
                 <ul className="mt-6 max-w-2xl space-y-4 border-t border-border pt-6">
                   {[

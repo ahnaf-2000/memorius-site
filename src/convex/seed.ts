@@ -6,7 +6,7 @@ import { mutation } from "./_generated/server";
  * behind by an earlier version — and only showcase data, never a programme a
  * business created itself.
  */
-const SHOWCASE_VERSION = 5;
+const SHOWCASE_VERSION = 6;
 
 /** What is on sale at every seeded event: merchandise to keep, snacks for the day. */
 const SHOP_STOCK = [
@@ -51,6 +51,117 @@ const SHOP_STOCK = [
     sold: 74,
   },
 ] as const;
+
+/**
+ * The detail block on a seeded event: who may attend, who is on stage, the
+ * organizer's own note, and anything announced after publication. Kept beside
+ * the catalogue rather than inline so the shape of an event stays readable.
+ */
+const DETAILS: Record<
+  string,
+  {
+    eligibility: string;
+    chiefGuest?: string;
+    specialGuests?: string[];
+    organizerNotes?: string;
+    /** Days before the start that booking shuts. Omit for no deadline. */
+    closesInDays?: number;
+    announcements?: { title: string; body: string; daysAgo: number }[];
+  }
+> = {
+  "supply-chain-resilience-forum": {
+    eligibility: "Professionals",
+    chiefGuest: "Amelia Sinclair, Chair, Freight Standards Board",
+    specialGuests: [
+      "Dr. Alastair Whitfield, Meridian Faculty",
+      "Priya Raman, Northwind Retail",
+      "Tom Achterberg, Vantage Freight",
+    ],
+    organizerNotes:
+      "Lunch and refreshments are included. Bring a laptop if you want to keep your own supplier risk map.",
+    closesInDays: 3,
+    announcements: [
+      {
+        title: "Doors open at 08:30",
+        body: "Registration is on the ground floor and the first session starts at 09:00 sharp.",
+        daysAgo: 6,
+      },
+      {
+        title: "Case review moves to Studio 3",
+        body: "The afternoon case review needs the smaller room to keep the group workable.",
+        daysAgo: 2,
+      },
+    ],
+  },
+  "ai-in-operations-workshop": {
+    eligibility: "Professionals",
+    specialGuests: ["Dr. Alastair Whitfield, Meridian Faculty"],
+    organizerNotes:
+      "Twelve workstations are available; bringing your own laptop is recommended.",
+    closesInDays: 2,
+  },
+  "the-next-decade-of-logistics-keynote": {
+    eligibility: "Open to everyone",
+    chiefGuest: "Dr. Alastair Whitfield",
+    specialGuests: ["Halima Yusuf, Arden Logistics"],
+    announcements: [
+      {
+        title: "Seating is unreserved",
+        body: "The room holds three hundred. Doors close at 18:00, when the address begins.",
+        daysAgo: 1,
+      },
+    ],
+  },
+  "operations-networking-dinner": {
+    eligibility: "Members only",
+    organizerNotes:
+      "Seating is assigned in advance — tell us who you would like to sit with when you book.",
+    closesInDays: 5,
+  },
+  "data-strategy-intensive": {
+    eligibility: "Professionals",
+    chiefGuest: "Priya Raman",
+    specialGuests: ["Elena Moretti, Corso Analytics"],
+    organizerNotes:
+      "Places are limited to sixty so that every table keeps a working ratio of eight to one.",
+    closesInDays: 4,
+    announcements: [
+      {
+        title: "Workbook published",
+        body: "The strategy template is on its way to your inbox — print it if you prefer paper.",
+        daysAgo: 3,
+      },
+    ],
+  },
+  "metrics-that-matter": {
+    eligibility: "Professionals",
+    specialGuests: ["Priya Raman, Northwind Retail"],
+    organizerNotes: "Bring your current reporting pack; we work on it directly.",
+  },
+  "analytics-roundtable": {
+    eligibility: "By invitation",
+    organizerNotes:
+      "No slides and no recording. A short written summary is shared with attendees only.",
+    closesInDays: 6,
+  },
+  "client-onboarding-masterclass": {
+    eligibility: "Members only",
+    specialGuests: ["Client Services, Meridian Group"],
+    closesInDays: 7,
+  },
+  "quarterly-planning-clinic": {
+    eligibility: "Open to everyone",
+    organizerNotes:
+      "Bring the quarter you are about to commit to; we write the plan up before you leave.",
+    closesInDays: 1,
+  },
+  "open-house-meet-the-team": {
+    eligibility: "Open to everyone",
+    specialGuests: ["The Meridian client team"],
+    organizerNotes:
+      "Nothing to prepare and no dress code — come as you are and ask anything.",
+  },
+};
 
 /** A handful of attendee voices, so every event page opens with a rating. */
 const REVIEWS = [
@@ -498,6 +609,22 @@ export const ensureSeeded = mutation({
             price: 0,
           },
           {
+            title: "Open House — Meet the Team",
+            category: "Open",
+            summary:
+              "An open evening with the team that runs your account, for anyone who is curious.",
+            description:
+              "No agenda and no slides. The client team is in the room for two hours to answer whatever you bring: how work is prioritised, what a retainer covers, who to call at 6pm on a Friday. Half the room usually stays afterwards.\n\nOpen to everyone, whether or not you work with us yet.",
+            format: "in-person" as const,
+            startTime: new Date(2027, 0, 22, 17, 30).getTime(),
+            endTime: new Date(2027, 0, 22, 19, 30).getTime(),
+            venue: "Atrium, Meridian Exchange",
+            host: "Client Services",
+            capacity: 120,
+            seatsTaken: 38,
+            price: 0,
+          },
+          {
             title: "Quarterly Planning Clinic",
             category: "Clinic",
             summary:
@@ -532,12 +659,30 @@ export const ensureSeeded = mutation({
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-+|-+$/g, "");
+        const detail = DETAILS[slug];
         const eventId = await ctx.db.insert("events", {
           ...event,
           festId,
           slug,
           showcase: true,
           createdAt: now,
+          ...(detail === undefined
+            ? {}
+            : {
+                eligibility: detail.eligibility,
+                chiefGuest: detail.chiefGuest,
+                specialGuests: detail.specialGuests,
+                organizerNotes: detail.organizerNotes,
+                registrationClosesAt:
+                  detail.closesInDays === undefined
+                    ? undefined
+                    : event.startTime - detail.closesInDays * 86_400_000,
+                announcements: detail.announcements?.map((note) => ({
+                  title: note.title,
+                  body: note.body,
+                  at: now - note.daysAgo * 86_400_000,
+                })),
+              }),
         });
         seededEvents.push({ eventId, festId, slug, title: event.title });
       }

@@ -41,9 +41,18 @@ export interface EventView {
   capacity: number;
   seatsTaken: number;
   remaining: number;
-  /** Minor units. Zero means no charge. */
+  /** Minor units. Zero means no charge — and zero is every event. */
   price: number;
+  /** The moment booking shuts, or null when the event stays open until full. */
   registrationClosesAt: number | null;
+  /** Who may attend. Never null: an event that says nothing is open. */
+  eligibility: string;
+  chiefGuest: string | null;
+  specialGuests: string[];
+  /** The organizer's own note, printed as None when they left none. */
+  organizerNotes: string | null;
+  /** Newest first, as the organizer published them. */
+  announcements: { title: string; body: string; at: number }[];
   state: SeatState;
   stateLabel: string;
   accepting: boolean;

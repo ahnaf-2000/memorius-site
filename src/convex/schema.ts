@@ -160,8 +160,26 @@ const schema = defineSchema(
       host: v.optional(v.string()),
       capacity: v.number(),
       seatsTaken: v.number(), // kept in step with bookings on write
-      price: v.number(), // minor units; 0 means no charge
+      price: v.number(), // minor units; 0 means no charge, and 0 is every event
       registrationClosesAt: v.optional(v.number()),
+      /** Who may attend. Absent means open to everyone. */
+      eligibility: v.optional(v.string()),
+      /** The headline guest, if the event has one. */
+      chiefGuest: v.optional(v.string()),
+      /** Everyone else named on the bill, in the order the organizer set. */
+      specialGuests: v.optional(v.array(v.string())),
+      /** The organizer's own note for attendees — printed as None when absent. */
+      organizerNotes: v.optional(v.string()),
+      /** Everything announced after publication, newest first. */
+      announcements: v.optional(
+        v.array(
+          v.object({
+            title: v.string(),
+            body: v.string(),
+            at: v.number(),
+          }),
+        ),
+      ),
       showcase: v.optional(v.boolean()),
       createdAt: v.number(),
     })

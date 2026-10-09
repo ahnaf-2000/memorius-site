@@ -260,6 +260,21 @@ export function activeMoneyUnit(): MoneyUnit {
 
 /* --------------------------------------------------------------- display */
 
+/**
+ * Every amount on the site is written in Western digits, whatever market it is
+ * quoted in.
+ *
+ * The locale decides the symbol, the grouping and the decimal mark, which is
+ * what makes a dollar read as $1,850 and a euro as 1.850,00 €. It must not
+ * decide the *numerals*: a visitor reading an English interface was being shown
+ * ৳১,৮৫০ for a taka price, because bn-BD writes Bengali digits. The language is
+ * the visitor's own choice and the currency is only a market, so the digits
+ * stay Latin and only the money's own shape changes.
+ */
+function latinDigits(locale: string): string {
+  return `${locale}-u-nu-latn`;
+}
+
 /** Convert a base-currency minor amount into the local major amount. */
 export function toLocalAmount(
   baseMinorUnits: number,
@@ -277,7 +292,7 @@ export function fromLocalAmount(localMajor: number, unit: MoneyUnit) {
 /** The symbol for the active market, for inputs that want it as a prefix. */
 export function activeSymbol() {
   const unit = activeMoneyUnit();
-  return new Intl.NumberFormat(unit.locale, {
+  return new Intl.NumberFormat(latinDigits(unit.locale), {
     style: "currency",
     currency: unit.currency,
   })
@@ -295,7 +310,7 @@ export function formatLocalPrice(
 ) {
   const amount = toLocalAmount(baseMinorUnits, unit);
   const whole = Math.abs(amount - Math.round(amount)) < 0.005;
-  return new Intl.NumberFormat(unit.locale, {
+  return new Intl.NumberFormat(latinDigits(unit.locale), {
     style: "currency",
     currency: unit.currency,
     minimumFractionDigits: 0,
@@ -310,7 +325,7 @@ export function formatLocalParts(
 ) {
   const amount = toLocalAmount(baseMinorUnits, unit);
   const whole = Math.abs(amount - Math.round(amount)) < 0.005;
-  const parts = new Intl.NumberFormat(unit.locale, {
+  const parts = new Intl.NumberFormat(latinDigits(unit.locale), {
     style: "currency",
     currency: unit.currency,
     minimumFractionDigits: 0,

@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import {
   makeReference,
@@ -88,6 +89,13 @@ export const book = mutation({
       if (status === "confirmed") {
         await ctx.db.patch(event._id, { seatsTaken: event.seatsTaken + 1 });
       }
+      // A place taken again is a place confirmed again: the customer gets the
+      // same personalised message, with the invoice, as a first booking.
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.bookingConfirmation,
+        { registrationId: existing._id },
+      );
       const refreshed = await ctx.db.get(existing._id);
       return {
         alreadyBooked: false,
@@ -129,6 +137,12 @@ export const book = mutation({
     if (status === "confirmed") {
       await ctx.db.patch(event._id, { seatsTaken: event.seatsTaken + 1 });
     }
+
+    // The confirmation, with everything the customer needs at the door and the
+    // invoice as a printable PDF, is assembled from the record just written.
+    await ctx.scheduler.runAfter(0, internal.notifications.bookingConfirmation, {
+      registrationId: bookingId,
+    });
 
     return {
       alreadyBooked: false,
@@ -177,6 +191,13 @@ export const cancel = mutation({
           .sort((a, b) => a.createdAt - b.createdAt)[0];
         if (nextInLine !== undefined) {
           await ctx.db.patch(nextInLine._id, { status: "confirmed" });
+          // They were waiting for this: the confirmation goes out the moment
+          // the place becomes theirs.
+          await ctx.scheduler.runAfter(
+            0,
+            internal.notifications.bookingConfirmation,
+            { registrationId: nextInLine._id },
+          );
         } else {
           await ctx.db.patch(event._id, {
             seatsTaken: Math.max(0, event.seatsTaken - 1),
